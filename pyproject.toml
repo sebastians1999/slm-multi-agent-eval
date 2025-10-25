@@ -4,4 +4,22 @@ version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "datasets<4.0.0",
+    "ddgs>=9.6.1",
+    "duckduckgo-search>=8.1.1",
+    "ipykernel>=7.0.1",
+    "langchain-community>=0.4",
+    "langchain-ollama>=1.0.0",
+    "langgraph>=1.0.1",
+    "langgraph-api>=0.4.46",
+    "ollama>=0.6.0",
+    "openpyxl>=3.1.5",
+    "pandas>=2.3.3",
+    "python-dotenv>=1.1.1",
+]
+
+[dependency-groups]
+dev = [
+    "langgraph-cli>=0.4.4",
+]
