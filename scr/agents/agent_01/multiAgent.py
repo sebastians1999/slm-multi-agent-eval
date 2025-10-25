@@ -2,18 +2,28 @@ from __future__ import annotations
 from typing import TypedDict, List, Dict, Any, Optional, Callable
 from dataclasses import dataclass
 import uuid, textwrap
+from dotenv import load_dotenv
+import os
+from pydantic import BaseModel
+from scr.utilities.helper_functions import extract_final_answer
+
+load_dotenv()
 
 # LangGraph / LangChain
 from langgraph.graph import StateGraph, START, END
 from langgraph.checkpoint.memory import MemorySaver
-
 from langchain_ollama import OllamaLLM
 from langchain_community.tools import DuckDuckGoSearchResults
+
+
 
 
 # ============================================================
 #  IMMUTABLE FIELDS
 # ============================================================
+
+#model="llama3.1:8b"
+model="llama3.2:1b"
 
 IMMUTABLE_FIELDS = {
     "session_id",
@@ -85,7 +95,7 @@ SOLUTIONS_MEMORY = SolutionsMemory()
 #  LOCAL LLM + WEB TOOL
 # ============================================================
 
-local_llm = OllamaLLM(model="llama3.1:8b", temperature=0.3)
+local_llm = OllamaLLM(model=model, temperature=0.3)
 duckduckgo = DuckDuckGoSearchResults(max_results=5)
 
 
@@ -127,6 +137,13 @@ def ddg_collect_raw(query: str) -> Dict[str, Any]:
 #  GRAPH STATE
 # ============================================================
 
+
+
+class StructuredOutput(BaseModel):
+    model_answer: str | None = None
+    reasoning_trace: str | None = None
+    
+    
 class GraphState(TypedDict, total=False):
     session_id: str
     problem: str
@@ -136,6 +153,7 @@ class GraphState(TypedDict, total=False):
     needs_revision: bool
     iteration_count: int      # 🆕 Track number of feedback iterations
     final_solution: Optional[str]
+    structured_output: StructuredOutput
     meta: Dict[str, Any]
 
 
@@ -291,7 +309,7 @@ Proposed Solution:
 
 Tasks:
 1. Determine if the final answer is correct and logically consistent.
-2. If correct, respond with "CORRECT: <brief confirmation>" No other text or characters before CORRECT.
+2. If correct, respond with "CORRECT: <brief confirmation>" No other text or characters before CORRECT. Finish you answer with the following template: FINAL ANSWER: [YOUR FINAL ANSWER]. YOUR FINAL ANSWER should be a number OR as few words as possible OR a comma separated list of numbers and/or strings. If you are asked for a number, don't use comma to write your number neither use units such as $ or percent sign unless specified otherwise. If you are asked for a string, don't use articles, neither abbreviations (e.g. for cities), and write the digits in plain text unless specified otherwise. If you are asked for a comma separated list, apply the above rules depending of whether the element to be put in the list is a number or a string."
 3. If not, respond with "INCORRECT: <specific feedback and what to adjust for a new iteration>".
 """
     evaluation = local_llm.invoke(prompt)
@@ -299,12 +317,17 @@ Tasks:
 
     if evaluation.strip().upper().startswith("CORRECT"):
         print("✅ Solution validated as correct.")
+        model_answer = extract_final_answer(evaluation)
+        state["structured_output"] = StructuredOutput(reasoning_trace=solution_text,model_answer=model_answer)
         state["final_solution"] = solution_text
         state["needs_revision"] = False
     else:
         print("⚠️ Evaluation suggests improvement; storing feedback.")
         SOLUTIONS_MEMORY.add(sid, SolutionRecord(evaluation, {"stage": "feedback"}))
         state["final_solution"] = evaluation
+        model_answer = extract_final_answer(evaluation)
+        state["structured_output"] = StructuredOutput(reasoning_trace=solution_text,model_answer=model_answer)
+        state["final_solution"] = solution_text
         state["needs_revision"] = True
 
     # 🆕 Count feedback iterations
@@ -342,6 +365,8 @@ workflow.add_edge("Researcher", "Summarizer")
 workflow.add_edge("Summarizer", "Solver")
 workflow.add_edge("Solver", "Evaluator")
 
+
+
 # Conditional loop: restart from Researcher if incorrect (max 2 times)
 def evaluation_router(state: GraphState):
     if state.get("needs_revision"):
@@ -361,12 +386,11 @@ workflow.add_edge("Reset", END)
 
 app = workflow.compile(checkpointer=MemorySaver())
 
-
 # ============================================================
 #  RUNNER
 # ============================================================
 
-def run_multi_agent(problem: str) -> str:
+def run_multi_agent(problem: str) -> dict[str,Any] |Any:
     sid = f"sess-{uuid.uuid4().hex[:8]}"
     print(f"\n🚀 Starting Self-Improving Reasoning Session: {sid}\n")
     init_state = {
@@ -377,7 +401,7 @@ def run_multi_agent(problem: str) -> str:
     }
     final = app.invoke(init_state, config={"configurable": {"thread_id": sid}})
     print("\n✅ Process completed.\n")
-    return final.get("final_solution", "(no answer)")
+    return final
 
 
 # ============================================================

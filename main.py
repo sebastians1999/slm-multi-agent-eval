@@ -1,4 +1,4 @@
-from pipeline import eval_pipeline
+from scr.pipeline import eval_pipeline
 import os
 import token
 from dotenv import load_dotenv
@@ -22,6 +22,8 @@ if __name__ == "__main__":
     validation_data = dataset["validation"]
     
     
-    evaluation = eval_pipeline.Eval_pipeline(dataset=validation_data)
+    
+    
+    evaluation = eval_pipeline.Eval_pipeline(dataset=validation_data.select(range(1)))
     
     evaluation.run_eval()
