@@ -10,12 +10,19 @@ from huggingface_hub import login
 
 if __name__ == "__main__": 
     
-    
+
+    # Read the token
+    hf_token = os.getenv("HF_TOKEN")
+
+    # Login securely
+    login(token=hf_token)
+
     dataset = load_dataset(
         "gaia-benchmark/GAIA",
         "2023_all",
         trust_remote_code=True
     )
+
     
     
     test_data = dataset["test"]

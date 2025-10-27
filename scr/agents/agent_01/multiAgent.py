@@ -16,14 +16,11 @@ from langchain_ollama import OllamaLLM
 from langchain_community.tools import DuckDuckGoSearchResults
 
 
-
-
 # ============================================================
 #  IMMUTABLE FIELDS
 # ============================================================
 
-#model="llama3.1:8b"
-model="llama3.2:1b"
+model="llama3.1:8b"
 
 IMMUTABLE_FIELDS = {
     "session_id",
