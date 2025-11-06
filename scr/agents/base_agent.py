@@ -12,7 +12,7 @@ class StructuredOutput(BaseModel):
     reasoning_trace: Optional[str] 
 
 
-class AgentRunMetadata(BaseModel):
+class AgentMetaData(BaseModel):
     session_id: str
     start_time: datetime
     end_time: Optional[datetime] = None
@@ -54,32 +54,29 @@ class BaseMultiAgent(ABC):
 
 
 
-    def invoke(self,prompt: str,session_id: str,metadata_tracker: Dict[str, AgentRunMetadata]):
-  
+    def invoke(self, messages):
+        """
+        Invoke the LLM with messages and return the response as a dictionary.
+
+        Args:
+            messages: List of message dicts, e.g., [{"role": "user", "content": "..."}]
+
+        Returns:
+            dict: Response dictionary with choices, usage, and energy_consumption (if available)
+        """
+        
+        
         response = self.openai_client.chat.completions.create(
             model=self.model,
-            messages=[{"role": "user", "content": prompt}],
+            messages=messages,
             temperature=self.temperature
         )
-
-        # Debug: Inspect response structure
-        # print("\n[DEBUG] Response inspection:")
-        # print(f"  Response type: {type(response)}")
-
-        # response_dict = response.model_dump()
-        # print(f"  Available keys: {list(response_dict.keys())}")
-
-
-        # if 'energy_consumption' in response_dict:
-        #     print(f"  Energy data found: {response_dict['energy_consumption']}")
-        # else:
-        #     print("  No energy_consumption field found")
-
-        # message = response.choices[0].message.content
         
-        # energy_meta_data = response_dict.get('energy_consumption', 'Not found')
-
-        # return message, energy_meta_data
+        
         return response.model_dump()
 
+
     
+    @abstractmethod
+    def run(self):
+        pass

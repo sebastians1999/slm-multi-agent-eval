@@ -14,6 +14,7 @@ dependencies = [
     "langgraph>=1.0.1",
     "langgraph-api>=0.4.46",
     "ollama>=0.6.0",
+    "openai>=2.7.1",
     "openpyxl>=3.1.5",
     "pandas>=2.3.3",
     "python-dotenv>=1.1.1",
