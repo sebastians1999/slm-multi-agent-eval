@@ -11,21 +11,21 @@ def main():
     api_key = "EMPTY"
     
     
-    #Settings 
-    model = "microsoft/Phi-3.5-mini-instruct"
-    temperature = 0.3
-    use_web_search = True
-    max_iterations = 2
-    
 
+    # Read the token
+    hf_token = os.getenv("HF_TOKEN")
 
-    print("\nLoading GAIA benchmark dataset...")
+    # Login securely
+    login(token=hf_token)
+
     dataset = load_dataset(
         "gaia-benchmark/GAIA",
         "2023_all",
         trust_remote_code=True
     )
 
+    
+    
     test_data = dataset["test"]
     validation_data = dataset["validation"]
 

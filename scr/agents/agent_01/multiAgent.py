@@ -13,10 +13,34 @@ from pydantic import BaseModel
 # LangGraph
 from langgraph.graph import StateGraph, START, END
 from langgraph.checkpoint.memory import MemorySaver
+from langchain_ollama import OllamaLLM
+from langchain_community.tools import DuckDuckGoSearchResults
 
-# Base agent and metadata
-from scr.agents.base_agent import BaseMultiAgent, AgentMetaData, StructuredOutput
-from scr.utilities.helper_functions import extract_final_answer
+
+# ============================================================
+#  IMMUTABLE FIELDS
+# ============================================================
+
+model="llama3.1:8b"
+
+IMMUTABLE_FIELDS = {
+    "session_id",
+    "problem",
+    "findings_ready",
+    "summaries_ready",
+    "solution_ready",
+    "meta",
+}
+
+
+def filter_immutable(fn: Callable):
+    """Strip immutable keys from node outputs to avoid update errors."""
+    def wrapper(state: Dict[str, Any]) -> Dict[str, Any]:
+        new_state = fn(state)
+        if not isinstance(new_state, dict):
+            return new_state
+        return {k: v for k, v in new_state.items() if k not in IMMUTABLE_FIELDS}
+    return wrapper
 
 
 # ============================================================
