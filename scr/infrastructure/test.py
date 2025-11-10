@@ -1,4 +1,3 @@
-from langchain_openai import ChatOpenAI
 import openai
 
 
@@ -18,7 +17,6 @@ if __name__ == "__main__":
     )
 
     print("Content:", response.choices[0].message.content)
-
     
     response_dict = response.model_dump()
     print("Energy consumption:", response_dict.get('energy_consumption', 'Not found'))

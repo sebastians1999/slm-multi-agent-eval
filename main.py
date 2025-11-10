@@ -1,14 +1,15 @@
-from scr.pipeline import eval_pipeline
+from scr.pipeline.eval_pipeline import Eval_pipeline
 import os
-import token
 from dotenv import load_dotenv
 from datasets import load_dataset
-from huggingface_hub import login
 
 
+def main():
 
-
-if __name__ == "__main__": 
+    load_dotenv()
+    base_url = os.getenv("MODAL_BASE_URL")
+    api_key = "EMPTY"
+    
     
 
     # Read the token
@@ -27,10 +28,29 @@ if __name__ == "__main__":
     
     test_data = dataset["test"]
     validation_data = dataset["validation"]
-    
-    
-    
-    
-    evaluation = eval_pipeline.Eval_pipeline(dataset=validation_data.select(range(1)))
-    
-    evaluation.run_eval()
+
+    print(f"  Test samples: {len(test_data)}")
+    print(f"  Validation samples: {len(validation_data)}")
+
+    eval_data = validation_data.select(range(1))
+    print(f"\n→ Evaluating on {len(eval_data)} validation samples")
+
+    pipeline = Eval_pipeline(
+        dataset=eval_data,
+        model=model,
+        temperature=temperature,
+        base_url=base_url,
+        api_key=api_key,
+        max_iterations=max_iterations,
+        use_web_search=use_web_search,
+    )
+
+    print("\nStarting evaluation")
+    pipeline.run_eval()
+
+    print("Evaluation completed!")
+
+
+
+if __name__ == "__main__":
+    main()
