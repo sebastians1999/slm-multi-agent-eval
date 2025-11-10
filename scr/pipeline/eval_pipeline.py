@@ -9,6 +9,9 @@ from tqdm import tqdm
 # Import multi-agent
 from scr.agents.agent_01.multiAgent import MultiAgent
 
+# Import cost tracker
+from scr.utilities.cost_tracker import CostTracker
+
 
 class Eval_pipeline:
     """
@@ -69,6 +72,9 @@ class Eval_pipeline:
             use_web_search=use_web_search,
         )
 
+        # Initialize cost tracker
+        self.cost_tracker = CostTracker()
+
     def run_eval(self):
         """
         Run evaluation on the entire dataset.
@@ -89,6 +95,14 @@ class Eval_pipeline:
             structured_output = result.get("structured_output")
             metadata = result.get("metadata")
 
+            cost_data = None
+            if metadata and metadata.prompt_tokens and metadata.completion_tokens:
+                cost_data = self.cost_tracker.calculate_cost(
+                    model_name=self.model,
+                    input_tokens=metadata.prompt_tokens,
+                    output_tokens=metadata.completion_tokens
+                )
+
             result_json = {
                 "task_id": sample["task_id"],
                 "model_answer": structured_output.model_answer if structured_output else None,
@@ -105,6 +119,7 @@ class Eval_pipeline:
                 "annotator_metadata": sample.get("Annotator Metadata"),
                 "result": result_json,
                 "agent_metadata": self._serialize_metadata(metadata) if metadata else None,
+                "cost_data": cost_data,
                 "model_temperature": self.temperature,
                 "model": self.model
             }
