@@ -15,6 +15,8 @@ from langgraph.graph import StateGraph, START, END
 from langgraph.checkpoint.memory import MemorySaver
 from langchain_ollama import OllamaLLM
 from langchain_community.tools import DuckDuckGoSearchResults
+from scr.agents.base_agent import AgentMetaData, BaseMultiAgent, StructuredOutput
+from scr.utilities.helper_functions import extract_final_answer
 
 
 # ============================================================
@@ -157,20 +159,32 @@ class MultiAgent(BaseMultiAgent):
         feedback = state.get("feedback", "")
 
         prompt = f"""You are the Researcher Agent.
-Your task is to decide whether a web search is needed to answer the user's problem, and
-if yes, generate the best possible concise search query.
+Your task is to decide whether a web search is needed to answer the user's problem or not.
 
-Guidelines:
-- Look carefully at the user's problem below.
-- If it is purely mathematical, logical, or reasoning-based → respond ONLY "NO_SEARCH". No other text
-- If it may depend on real-world facts, data, events, or statistics → respond ONLY "SEARCH: <optimal query>".
-- The query should be short, focused, and maximize the likelihood of retrieving relevant answers. It must be a google query style search.
-- Do NOT just repeat the problem text verbatim — rephrase it into an effective search query.
+
+Carefully read the user's problem below.
 
 User Problem:
 {problem}
 
-Previous feedback from evaluation (if any):
+If the problem can be solved using logic, reasoning, or mathematics — even if it mentions people, places, or objects — respond only with:
+NO_SEARCH
+
+Only choose SEARCH when the answer truly requires external factual knowledge (e.g., current events, specific statistics, real-world facts, or data unavailable from reasoning alone).
+
+When using SEARCH, respond exactly as:
+SEARCH: <concise, effective Google-style query>
+
+Never choose SEARCH for word problems, logic puzzles, riddles, or math questions.
+
+Never output anything except one of these two forms:
+NO_SEARCH
+or
+SEARCH: <query>
+
+Default strongly to NO_SEARCH unless absolutely certain real-world knowledge is required."
+
+Previous evaluation feedback (if any):
 {feedback}
 """
 
@@ -397,6 +411,7 @@ Tasks:
         Perform web search (placeholder - integrate with DuckDuckGo or other).
         """
         try:
+            from langchain_community.tools import DuckDuckGoSearchResults
             from langchain_community.tools import DuckDuckGoSearchResults
             duckduckgo = DuckDuckGoSearchResults(max_results=5)
 

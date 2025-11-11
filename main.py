@@ -1,56 +1,16 @@
-from scr.pipeline.eval_pipeline import Eval_pipeline
-import os
-from dotenv import load_dotenv
 from datasets import load_dataset
-
+from scr.pipeline.eval_pipeline import Eval_pipeline
 
 def main():
-
-    load_dotenv()
-    base_url = os.getenv("MODAL_BASE_URL")
-    api_key = "EMPTY"
-    
-    
-
-    # Read the token
-    hf_token = os.getenv("HF_TOKEN")
-
-    # Login securely
-    login(token=hf_token)
-
-    dataset = load_dataset(
-        "gaia-benchmark/GAIA",
-        "2023_all",
-        trust_remote_code=True
-    )
-
-    
-    
-    test_data = dataset["test"]
-    validation_data = dataset["validation"]
-
-    print(f"  Test samples: {len(test_data)}")
-    print(f"  Validation samples: {len(validation_data)}")
-
-    eval_data = validation_data.select(range(1))
-    print(f"\n→ Evaluating on {len(eval_data)} validation samples")
+    dataset = load_dataset("gsm8k", "main")["test"].select(range(10))  # sample 50 items
 
     pipeline = Eval_pipeline(
-        dataset=eval_data,
-        model=model,
-        temperature=temperature,
-        base_url=base_url,
-        api_key=api_key,
-        max_iterations=max_iterations,
-        use_web_search=use_web_search,
+        dataset=dataset,
+        model="llama3.1:8b",
+        base_url="http://localhost:11434/v1",
     )
 
-    print("\nStarting evaluation")
     pipeline.run_eval()
-
-    print("Evaluation completed!")
-
-
 
 if __name__ == "__main__":
     main()
