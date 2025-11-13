@@ -2,7 +2,7 @@ from datasets import load_dataset
 from scr.pipeline.eval_pipeline import Eval_pipeline
 
 def main():
-    dataset = load_dataset("gsm8k", "main")["test"].select(range(10))  # sample 50 items
+    dataset = load_dataset("gsm8k", "main")["test"].select(range(50))  # sample 50 items
 
     pipeline = Eval_pipeline(
         dataset=dataset,

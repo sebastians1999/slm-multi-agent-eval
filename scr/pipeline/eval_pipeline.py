@@ -96,7 +96,8 @@ class Eval_pipeline:
             # 3) else fallback to string of structured_output/result
             structured_output = result.get("structured_output")
             model_answer_text = result.get("solution")
-
+            print("gold answer raw:", gold_answer_raw)
+            print("model answer text:", model_answer_text)
             if model_answer_text is None:
                 if structured_output and hasattr(structured_output, "model_answer"):
                     model_answer_text = getattr(structured_output, "model_answer")
