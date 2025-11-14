@@ -4,24 +4,26 @@ Clean, maintainable implementation with proper metadata tracking.
 """
 
 from __future__ import annotations
-from typing import TypedDict, List, Dict, Any, Optional
-import uuid
-import textwrap
-from datetime import datetime
-from pydantic import BaseModel
 
-# LangGraph
-from langgraph.graph import StateGraph, START, END
+import textwrap
+import uuid
+from datetime import datetime
+from typing import Any, Dict, List, Optional, TypedDict
+
 from langgraph.checkpoint.memory import MemorySaver
 
-# Base agent and metadata
-from scr.agents.base_agent import BaseMultiAgent, AgentMetaData, StructuredOutput
-from scr.utilities.helper_functions import extract_final_answer
+# LangGraph
+from langgraph.graph import END, START, StateGraph
+from pydantic import BaseModel
 
+# Base agent and metadata
+from scr.agents.base_agent import AgentMetaData, BaseAgent, StructuredOutput
+from scr.utilities.helper_functions import extract_final_answer
 
 # ============================================================
 #  GRAPH STATE
 # ============================================================
+
 
 class GraphState(TypedDict, total=False):
     """
@@ -46,6 +48,7 @@ class GraphState(TypedDict, total=False):
         iteration_count: Number of feedback iterations
         feedback: Evaluation feedback for next iteration
     """
+
     # Core
     session_id: str
     problem: str
@@ -70,7 +73,8 @@ class GraphState(TypedDict, total=False):
 #  MULTI-AGENT CLASS
 # ============================================================
 
-class MultiAgent(BaseMultiAgent):
+
+class MultiAgent(BaseAgent):
     """
     Multi-agent reasoning system with metadata tracking.
 
@@ -87,7 +91,7 @@ class MultiAgent(BaseMultiAgent):
         api_key: str = "EMPTY",
         max_iterations: int = 2,
         use_web_search: bool = True,
-        **kwargs
+        **kwargs,
     ):
         super().__init__(model, temperature, base_url, api_key, **kwargs)
         self.max_iterations = max_iterations
@@ -114,7 +118,7 @@ class MultiAgent(BaseMultiAgent):
         workflow.add_conditional_edges(
             "Evaluator",
             self._evaluation_router,
-            {"Researcher": "Researcher", "END": END}
+            {"Researcher": "Researcher", "END": END},
         )
 
         return workflow.compile(checkpointer=MemorySaver())
@@ -133,22 +137,22 @@ class MultiAgent(BaseMultiAgent):
         feedback = state.get("feedback", "")
 
         prompt = f"""You are the Researcher Agent.
-Your task is to decide whether a web search is needed to answer the user's problem, and
-if yes, generate the best possible concise search query.
+        Your task is to decide whether a web search is needed to answer the user's problem, and
+        if yes, generate the best possible concise search query.
 
-Guidelines:
-- Look carefully at the user's problem below.
-- If it is purely mathematical, logical, or reasoning-based → respond ONLY "NO_SEARCH". No other text
-- If it may depend on real-world facts, data, events, or statistics → respond ONLY "SEARCH: <optimal query>".
-- The query should be short, focused, and maximize the likelihood of retrieving relevant answers. It must be a google query style search.
-- Do NOT just repeat the problem text verbatim — rephrase it into an effective search query.
+        Guidelines:
+        - Look carefully at the user's problem below.
+        - If it is purely mathematical, logical, or reasoning-based → respond ONLY "NO_SEARCH". No other text
+        - If it may depend on real-world facts, data, events, or statistics → respond ONLY "SEARCH: <optimal query>".
+        - The query should be short, focused, and maximize the likelihood of retrieving relevant answers. It must be a google query style search.
+        - Do NOT just repeat the problem text verbatim — rephrase it into an effective search query.
 
-User Problem:
-{problem}
+        User Problem:
+        {problem}
 
-Previous feedback from evaluation (if any):
-{feedback}
-"""
+        Previous feedback from evaluation (if any):
+        {feedback}
+        """
 
         # Call LLM with metadata tracking
         response = self._invoke_with_metadata(prompt, state)
@@ -160,7 +164,7 @@ Previous feedback from evaluation (if any):
         if decision.upper().startswith("NO_SEARCH"):
             findings = {
                 "snippets": ["(No web search performed — reasoning sufficient.)"],
-                "sources": []
+                "sources": [],
             }
             search_query = None
             print("   ⚙️ No search required (problem can be reasoned internally).")
@@ -173,21 +177,22 @@ Previous feedback from evaluation (if any):
             else:
                 findings = {
                     "snippets": ["(Web search disabled in this configuration)"],
-                    "sources": []
+                    "sources": [],
                 }
         else:
             # Fallback: treat whole problem as query
             search_query = problem
-            findings = self._perform_web_search(search_query) if self.use_web_search else {
-                "snippets": ["(Web search disabled)"],
-                "sources": []
-            }
+            findings = (
+                self._perform_web_search(search_query)
+                if self.use_web_search
+                else {"snippets": ["(Web search disabled)"], "sources": []}
+            )
 
         return {
             "search_decision": decision,
             "search_query": search_query,
             "findings": findings,
-            "metadata": state["metadata"]
+            "metadata": state["metadata"],
         }
 
     def _summarizer_node(self, state: GraphState) -> Dict[str, Any]:
@@ -210,12 +215,11 @@ Evidence:
         response = self._invoke_with_metadata(prompt, state)
         summary = response["content"]
 
-        print(f"[Summarizer] Summary snippet:\n{textwrap.indent(summary[:400], '   ')}...")
+        print(
+            f"[Summarizer] Summary snippet:\n{textwrap.indent(summary[:400], '   ')}..."
+        )
 
-        return {
-            "summary": summary,
-            "metadata": state["metadata"]
-        }
+        return {"summary": summary, "metadata": state["metadata"]}
 
     def _solver_node(self, state: GraphState) -> Dict[str, Any]:
         """
@@ -245,12 +249,11 @@ Provide an improved, clear, step-by-step solution and a final answer.
         response = self._invoke_with_metadata(prompt, state)
         solution = response["content"]
 
-        print(f"[Solver] Solution snippet:\n{textwrap.indent(solution[:400], '   ')}...")
+        print(
+            f"[Solver] Solution snippet:\n{textwrap.indent(solution[:400], '   ')}..."
+        )
 
-        return {
-            "solution": solution,
-            "metadata": state["metadata"]
-        }
+        return {"solution": solution, "metadata": state["metadata"]}
 
     def _evaluator_node(self, state: GraphState) -> Dict[str, Any]:
         """
@@ -286,8 +289,7 @@ Tasks:
             print("✅ Solution validated as correct.")
             model_answer = extract_final_answer(evaluation)
             structured_output = StructuredOutput(
-                reasoning_trace=solution,
-                model_answer=model_answer
+                reasoning_trace=solution, model_answer=model_answer
             )
             needs_revision = False
             feedback = ""
@@ -295,8 +297,7 @@ Tasks:
             print("⚠️ Evaluation suggests improvement; storing feedback.")
             model_answer = extract_final_answer(evaluation)
             structured_output = StructuredOutput(
-                reasoning_trace=solution,
-                model_answer=model_answer
+                reasoning_trace=solution, model_answer=model_answer
             )
             needs_revision = True
             feedback = evaluation
@@ -312,7 +313,7 @@ Tasks:
             "needs_revision": needs_revision,
             "feedback": feedback,
             "iteration_count": iteration_count,
-            "metadata": state["metadata"]
+            "metadata": state["metadata"],
         }
 
     # ============================================================
@@ -323,9 +324,13 @@ Tasks:
         """Route based on evaluation: loop back or end."""
         if state.get("needs_revision"):
             if state.get("iteration_count", 0) >= self.max_iterations:
-                print(f"🛑 Maximum feedback iterations ({self.max_iterations}) reached. Ending process.")
+                print(
+                    f"🛑 Maximum feedback iterations ({self.max_iterations}) reached. Ending process."
+                )
                 return "END"
-            print(f"🔄 Revision needed. Starting iteration {state.get('iteration_count', 0)}...")
+            print(
+                f"🔄 Revision needed. Starting iteration {state.get('iteration_count', 0)}..."
+            )
             return "Researcher"
         return "END"
 
@@ -364,7 +369,9 @@ Tasks:
 
             # Update average watts
             if metadata.total_duration_seconds > 0:
-                metadata.average_watts = metadata.total_energy_joules / metadata.total_duration_seconds
+                metadata.average_watts = (
+                    metadata.total_energy_joules / metadata.total_duration_seconds
+                )
 
         return {"content": content}
 
@@ -374,6 +381,7 @@ Tasks:
         """
         try:
             from langchain_community.tools import DuckDuckGoSearchResults
+
             duckduckgo = DuckDuckGoSearchResults(max_results=5)
 
             print(f"   🔎 [DuckDuckGo] Searching for: {query!r}")
@@ -399,10 +407,7 @@ Tasks:
 
         except Exception as e:
             print(f"   ⚠️ Web search failed: {e}")
-            return {
-                "snippets": [f"(Web search failed: {e})"],
-                "sources": []
-            }
+            return {"snippets": [f"(Web search failed: {e})"], "sources": []}
 
     def _print_divider(self, title: str):
         """Print formatted section divider."""
@@ -445,8 +450,7 @@ Tasks:
 
         # Run graph
         final_state = self.graph.invoke(
-            init_state,
-            config={"configurable": {"thread_id": session_id}}
+            init_state, config={"configurable": {"thread_id": session_id}}
         )
 
         # Finalize metadata
@@ -459,6 +463,7 @@ Tasks:
 # ============================================================
 #  CONVENIENCE FUNCTION
 # ============================================================
+
 
 def run_multi_agent(
     problem: str,
@@ -505,7 +510,7 @@ How many oranges does each friend receive?"""
 
     result = run_multi_agent(
         problem=problem,
-        use_web_search=False  # Disable for math problems
+        use_web_search=False,  # Disable for math problems
     )
 
     print("\n=== 🏁 FINAL RESULT ===\n")

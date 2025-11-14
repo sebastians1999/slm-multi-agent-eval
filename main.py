@@ -1,4 +1,5 @@
 from scr.pipeline.eval_pipeline import Eval_pipeline
+from scr.agents.agent_02.single_agent import SingleAgent
 import os
 from dotenv import load_dotenv
 from datasets import load_dataset
@@ -9,14 +10,13 @@ def main():
     load_dotenv()
     base_url = os.getenv("MODAL_BASE_URL")
     api_key = "EMPTY"
-    
-    
-    #Settings 
-    model = "microsoft/Phi-3.5-mini-instruct"
+
+
+    # Agent settings
+    model = "Qwen/Qwen3-4B-Instruct-2507"
     temperature = 0.3
-    use_web_search = True
-    max_iterations = 2
-    
+    max_iterations = 5
+
 
 
     print("\nLoading GAIA benchmark dataset...")
@@ -35,16 +35,22 @@ def main():
     eval_data = validation_data.select(range(1))
     print(f"\n→ Evaluating on {len(eval_data)} validation samples")
 
-    pipeline = Eval_pipeline(
-        dataset=eval_data,
+    # 1. Initialize agent
+    agent = SingleAgent(
         model=model,
         temperature=temperature,
         base_url=base_url,
         api_key=api_key,
-        max_iterations=max_iterations,
-        use_web_search=use_web_search,
+        max_iterations=max_iterations
     )
 
+    # 2. Initialize eval pipeline with agent
+    pipeline = Eval_pipeline(
+        dataset=eval_data,
+        agent=agent
+    )
+
+    # 3. Run evaluation
     print("\nStarting evaluation")
     pipeline.run_eval()
 
