@@ -339,6 +339,11 @@ Previous evaluation feedback (if any):
 {feedback}
 
 Provide an improved, clear, step-by-step solution and a final answer.
+
+The final numeric answer must appear on the last line, in GSM8K format, prefixed with:
+#### <number>
+number must always be provided as integer, never float. No symbols near to the number.
+Nothing should follow this line.
 """
 
         response = self._invoke_with_metadata(prompt, state)
@@ -563,7 +568,7 @@ Tasks:
 
 def run_multi_agent(
     problem: str,
-    model: str = "llama3.2:1b",
+    model: str = "llama3.1:8b",
     temperature: float = 0.3,
     base_url: Optional[str] = None,
     api_key: str = "EMPTY",

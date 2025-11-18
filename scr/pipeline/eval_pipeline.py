@@ -90,30 +90,23 @@ class Eval_pipeline:
             # Call agent
             result = self.call_agent(question=question)
 
-            # Try to read model's final answer:
-            # 1) If your MultiAgent returns result["solution"], prefer it
-            # 2) else use structured_output.model_answer
-            # 3) else fallback to string of structured_output/result
-            structured_output = result.get("structured_output")
+
             model_answer_text = result.get("solution")
             print("gold answer raw:", gold_answer_raw)
             print("model answer text:", model_answer_text)
-            if model_answer_text is None:
-                if structured_output and hasattr(structured_output, "model_answer"):
-                    model_answer_text = getattr(structured_output, "model_answer")
-                elif structured_output is not None:
-                    model_answer_text = str(structured_output)
-                else:
-                    # last resort: dump result
-                    model_answer_text = str(result)
 
             # Extract numeric answers
+            # REPLACE IT WITH LLM EXTRACTING THE NUMBER
+
             pred_num = self._extract_gsm8k_number(model_answer_text)
             gold_num = self._extract_gsm8k_number(gold_answer_raw)
 
+            print("gold number:", gold_num)
+            print("extracted predicted number:", pred_num)
             is_correct = (pred_num is not None) and (gold_num is not None) and (pred_num == gold_num)
             if is_correct:
                 correct += 1
+                print("Correct! VAMOOOOOOSSS")
 
             metadata = result.get("metadata")
             cost_data = None
@@ -189,8 +182,8 @@ class Eval_pipeline:
         if m:
             return m.group(1).strip()
 
-        # Fallback: take the last numeric token in the text
-        matches = re.findall(r"[-+]?\d+(?:\.\d+)?", str(text))
+        # Fallback: take the last numeric token in the text (even with $)
+        matches = re.findall(r"\$?[-+]?\d+(?:\.\d+)?", str(text))
         return matches[-1].strip() if matches else None
 
     def _serialize_metadata(self, metadata) -> Dict[str, Any]:
