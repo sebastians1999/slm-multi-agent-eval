@@ -1,67 +1,86 @@
-from langchain_community.agent_toolkits import PlayWrightBrowserToolkit
-from langchain_community.tools.playwright.utils import create_sync_playwright_browser
-from typing import Dict, Any
-import json
+"""
+PlayWright Browser Tools Integration
+
+Integrates LangChain PlayWrightBrowserToolkit into the agent framework
+using the generic LangChain adapter and browser lifecycle manager.
+"""
+
+from typing import Dict, List, Callable, Tuple
+from ..utils.browser_manager import BrowserManager
+from ..utils.langchain_adapter import convert_langchain_toolkit
 
 
-_browser = None
-_toolkit = None
-_tools_by_name = None
+def get_playwright_tools() -> Tuple[List[Dict], Dict[str, Callable], BrowserManager]:
+    """
+    Initialize and return PlayWright browser tools.
 
+    This function creates a browser manager, initializes the LangChain
+    PlayWrightBrowserToolkit, and converts it to OpenAI-compatible format.
 
-def _initialize_browser():
-    """Initialize the browser and toolkit once."""
-    global _browser, _toolkit, _tools_by_name
+    Returns:
+        Tuple of (tool_schemas, tool_functions, browser_manager):
+            - tool_schemas: List of OpenAI-compatible tool schemas
+            - tool_functions: Dict mapping tool names to callables
+            - browser_manager: BrowserManager instance for cleanup
 
-    if _browser is None:
-        _browser = create_sync_playwright_browser()
-        _toolkit = PlayWrightBrowserToolkit.from_browser(sync_browser=_browser)
-        tools = _toolkit.get_tools()
-        _tools_by_name = {tool.name: tool for tool in tools}
+    Raises:
+        ImportError: If langchain-community or playwright not installed
+        RuntimeError: If browser initialization fails
 
+    Example:
+        >>> schemas, functions, manager = get_playwright_tools()
+        >>> # Use schemas with OpenAI API, functions for execution
+        >>> # Cleanup when done:
+        >>> manager.close()
 
-def navigate_browser(url: str) -> str:
-    """Navigate to a URL."""
-    _initialize_browser()
-    tool = _tools_by_name["navigate_browser"]
-    return tool.run({"url": url})
+    Available Tools (from PlayWrightBrowserToolkit):
+        - navigate_browser: Navigate to a URL
+        - navigate_back: Go back in browser history
+        - navigate_forward: Go forward in browser history
+        - click_element: Click on an element
+        - extract_text: Extract text from the current page
+        - extract_hyperlinks: Extract all links from the page
+        - get_elements: Get elements matching a selector
+        - current_url: Get the current page URL
+    """
+    try:
+        from langchain_community.agent_toolkits.playwright.toolkit import (
+            PlayWrightBrowserToolkit
+        )
+        from langchain_community.tools.playwright.utils import (
+            create_sync_playwright_browser
+        )
+    except ImportError as e:
+        raise ImportError(
+            "LangChain PlayWright dependencies not installed. Install with:\n"
+            "  pip install langchain-community playwright\n"
+            "  playwright install chromium"
+        ) from e
 
+    # Create browser manager (lazy initialization)
+    browser_manager = BrowserManager()
 
-def extract_text() -> str:
-    """Extract all text from the current webpage."""
-    _initialize_browser()
-    tool = _tools_by_name["extract_text"]
-    return tool.run({})
+    # Get browser instance (triggers initialization)
+    try:
+        sync_browser = browser_manager.get_browser()
+    except Exception as e:
+        browser_manager.close()
+        raise RuntimeError(f"Failed to initialize browser: {e}") from e
 
+    # Initialize PlayWright toolkit with the browser
+    try:
+        toolkit = PlayWrightBrowserToolkit.from_browser(sync_browser=sync_browser)
+    except Exception as e:
+        browser_manager.close()
+        raise RuntimeError(f"Failed to create PlayWright toolkit: {e}") from e
 
-def extract_hyperlinks() -> str:
-    """Extract all hyperlinks from the current webpage."""
-    _initialize_browser()
-    tool = _tools_by_name["extract_hyperlinks"]
-    return tool.run({})
+    # Convert LangChain tools to OpenAI format
+    try:
+        tool_schemas, tool_functions = convert_langchain_toolkit(toolkit)
+    except Exception as e:
+        browser_manager.close()
+        raise RuntimeError(f"Failed to convert browser tools: {e}") from e
 
+    print(f"[Browser Tools] Initialized {len(tool_schemas)} PlayWright tools")
 
-def get_current_page() -> str:
-    """Get the current page URL."""
-    _initialize_browser()
-    tool = _tools_by_name["current_webpage"]
-    return tool.run({})
-
-
-def click_element(selector: str) -> str:
-    """Click on an element specified by CSS selector."""
-    _initialize_browser()
-    tool = _tools_by_name["click_element"]
-    return tool.run({"selector": selector})
-
-
-def get_elements(selector: str, attributes: list = None) -> str:
-    """Get elements by CSS selector with optional attributes."""
-    _initialize_browser()
-    tool = _tools_by_name["get_elements"]
-
-    if attributes is None:
-        attributes = ["innerText"]
-
-    result = tool.run({"selector": selector, "attributes": attributes})
-    return result
+    return tool_schemas, tool_functions, browser_manager

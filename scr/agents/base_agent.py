@@ -1,11 +1,17 @@
 from abc import ABC, abstractmethod
 from typing import Dict, Optional, List, Callable
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from openai import OpenAI
-from .tools_list import tools
-from .tool_functions import tool_functions
 import json
-    
+
+
+class ToolCallRecord(BaseModel):
+    """Record of a single tool invocation."""
+    tool_name: str
+    success: bool
+    iteration: int
+    error_message: Optional[str] = None
+
 
 class agent_meta_data(BaseModel):
     completion_tokens: int = 0
@@ -14,6 +20,11 @@ class agent_meta_data(BaseModel):
     total_energy_joules: float = 0.0
     total_duration_seconds: float = 0.0
     average_watts: float = 0.0
+
+    # Tool usage tracking
+    tool_calls: List[ToolCallRecord] = Field(default_factory=list)
+    tool_call_count: int = 0
+    unique_tools_used: List[str] = Field(default_factory=list)
 
 
 class BaseAgent(ABC):
@@ -24,23 +35,69 @@ class BaseAgent(ABC):
         temperature: float = 0.3,
         base_url: Optional[str] = None,
         api_key: str = "EMPTY",
-        tools: Optional[List[Dict]] = tools,
-        tool_functions: Optional[Dict[str, Callable]] = tool_functions,
+        tool_categories: Optional[List[str]] = None,
+        tools: Optional[List[Dict]] = None,
+        tool_functions: Optional[Dict[str, Callable]] = None,
         max_iterations: int = 10,
         **kwargs
     ):
         """
-        Initialize the agent.
+        Initialize the agent with dynamic tool loading.
+
+        Args:
+            model: Model name/ID to use
+            temperature: Sampling temperature (0-1)
+            base_url: Optional custom API base URL
+            api_key: API key for authentication
+            tool_categories: List of tool categories to load (e.g., ['search', 'browser'])
+                           If None and tools not provided, loads ALL available categories
+            tools: Optional custom tool schemas (bypasses category system)
+            tool_functions: Optional custom tool functions (bypasses category system)
+            max_iterations: Maximum tool-calling iterations
+            **kwargs: Additional configuration options
+
+        Available Categories:
+            - 'search': Web search tools (Tavily)
+            - 'code': Python code execution (E2B)
+            - 'browser': Web browser navigation (PlayWright)
+
+        Example:
+            >>> # Load all tools (default)
+            >>> agent = BaseAgent(model="gpt-4")
+            >>>
+            >>> # Load specific categories
+            >>> agent = BaseAgent(model="gpt-4", tool_categories=['search', 'browser'])
+            >>>
+            >>> # Use custom tools (for testing)
+            >>> agent = BaseAgent(model="gpt-4", tools=[...], tool_functions={...})
         """
         self.model = model
         self.temperature = temperature
         self.base_url = base_url
         self.api_key = api_key
         self.config = kwargs
-        self.tools = tools or []
-        self.tool_functions = tool_functions or {}
         self.max_iterations = max_iterations
         self.meta_data = agent_meta_data()
+        self._current_iteration = 0  #  for tool usage
+
+        # Tool loading: custom tools take precedence over categories
+        if tools is not None and tool_functions is not None:
+            # Custom tools provided (e.g., for testing)
+            self.tools = tools
+            self.tool_functions = tool_functions
+            self.tool_categories = None
+            self.browser_manager = None
+        else:
+            # Dynamic tool loading from registry
+            from .tool_loader import get_tools_for_agent, get_browser_manager
+
+            self.tool_categories = tool_categories
+            self.tools, self.tool_functions = get_tools_for_agent(tool_categories)
+
+            # Track browser manager for cleanup if browser tools loaded
+            self.browser_manager = None
+            if tool_categories is None or (isinstance(tool_categories, list) and 'browser' in tool_categories):
+                self.browser_manager = get_browser_manager()
 
         self.openai_client = self._create_openai_client()
 
@@ -55,33 +112,71 @@ class BaseAgent(ABC):
 
     def _update_metadata(self, response_dict: Dict) -> None:
         """Update metadata based on API response."""
-        usage = response_dict.get("usage", {})
+        if response_dict is None:
+            return
 
-        self.meta_data.completion_tokens += usage.get("completion_tokens", 0)
-        self.meta_data.prompt_tokens += usage.get("prompt_tokens", 0)
-        self.meta_data.total_tokens += usage.get("total_tokens", 0)
+        usage = response_dict.get("usage", {})
+        if usage:
+            self.meta_data.completion_tokens += usage.get("completion_tokens", 0)
+            self.meta_data.prompt_tokens += usage.get("prompt_tokens", 0)
+            self.meta_data.total_tokens += usage.get("total_tokens", 0)
 
         energy_consumption = response_dict.get("energy_consumption", {})
-        self.meta_data.total_energy_joules += energy_consumption.get("joules", 0.0)
-        self.meta_data.total_duration_seconds += energy_consumption.get("duration_seconds", 0.0)
+        if energy_consumption:
+            self.meta_data.total_energy_joules += energy_consumption.get("joules", 0.0)
+            self.meta_data.total_duration_seconds += energy_consumption.get("duration_seconds", 0.0)
 
-        if self.meta_data.total_duration_seconds > 0:
-            self.meta_data.average_watts = (
-                self.meta_data.total_energy_joules / self.meta_data.total_duration_seconds
-            )
+            if self.meta_data.total_duration_seconds > 0:
+                self.meta_data.average_watts = (
+                    self.meta_data.total_energy_joules / self.meta_data.total_duration_seconds
+                )
 
+    def _track_tool_usage(
+        self,
+        tool_name: str,
+        success: bool,
+        error: Optional[str] = None
+    ) -> None:
+        """
+        Track tool usage in metadata.
+
+        Args:
+            tool_name: Name of the tool that was called
+            success: Whether the tool execution was successful
+            error: Error message if execution failed
+        """
+        record = ToolCallRecord(
+            tool_name=tool_name,
+            success=success,
+            iteration=self._current_iteration,
+            error_message=error
+        )
+        self.meta_data.tool_calls.append(record)
+        self.meta_data.tool_call_count += 1
+
+        # Add to unique tools list if not already present
+        if tool_name not in self.meta_data.unique_tools_used:
+            self.meta_data.unique_tools_used.append(tool_name)
 
     def _execute_tool_call(self, tool_name: str, tool_args: Dict) -> str:
         """Execute a tool function and return the result."""
         if tool_name not in self.tool_functions:
+            # Track failed call - tool not found
+            self._track_tool_usage(tool_name, success=False, error="Tool not found")
             return f"Error: Tool '{tool_name}' not found in tool_functions"
 
         try:
             tool_func = self.tool_functions[tool_name]
             result = tool_func(**tool_args)
             print(result)
+
+            # Track successful call
+            self._track_tool_usage(tool_name, success=True)
+
             return str(result)
         except Exception as e:
+            # Track failed call - execution error
+            self._track_tool_usage(tool_name, success=False, error=str(e))
             return f"Error executing tool '{tool_name}': {str(e)}"
 
 
@@ -104,6 +199,7 @@ class BaseAgent(ABC):
         # Agent loop - continues until model stops calling tools
         while iterations < self.max_iterations:
             iterations += 1
+            self._current_iteration = iterations  # Track for tool usage
 
             # Build API call parameters
             call_params = {
@@ -122,7 +218,17 @@ class BaseAgent(ABC):
             
             try:
                 response = self.openai_client.chat.completions.create(**call_params)
-                response_dict = response.model_dump()
+                response_dict = response.model_dump() if response else None
+
+                if response_dict is None:
+                    return {
+                        "content": "Error: Received None response from LLM",
+                        "messages": current_messages,
+                        "all_responses": all_responses,
+                        "iterations": iterations,
+                        "error": "None response"
+                    }
+
                 all_responses.append(response_dict)
                 self._update_metadata(response_dict)
             except Exception as e:
@@ -195,6 +301,7 @@ class BaseAgent(ABC):
                 }
 
             for tool_call in tool_calls:
+                print(f"Using tool {tool_call}")
                 function_name = tool_call["function"]["name"]
                 function_args = json.loads(tool_call["function"]["arguments"])
 
@@ -215,7 +322,37 @@ class BaseAgent(ABC):
             "warning": f"Agent reached maximum iterations ({self.max_iterations})"
         }
 
-    
+    def cleanup(self) -> None:
+        """
+        Cleanup agent resources.
+
+        Closes browser manager if browser tools are loaded.
+        Safe to call multiple times.
+        """
+        if self.browser_manager is not None:
+            try:
+                self.browser_manager.close()
+            except Exception as e:
+                print(f"[BaseAgent] Error during cleanup: {e}")
+
+    # Context manager protocol
+    def __enter__(self):
+        """Enter context manager."""
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Exit context manager and cleanup resources."""
+        self.cleanup()
+        return False  # Don't suppress exceptions
+
+    def __del__(self):
+        """Cleanup on garbage collection."""
+        try:
+            self.cleanup()
+        except Exception:
+            pass  # Ignore errors during cleanup
+
+
     @abstractmethod
     def run(self,prompt):
         pass

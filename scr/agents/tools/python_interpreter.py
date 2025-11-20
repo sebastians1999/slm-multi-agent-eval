@@ -8,10 +8,39 @@ api_key = os.getenv("E2B_API_KEY")
 if not api_key:
     raise ValueError("E2B_API_KEY environment variable is not set")
 
+# OpenAI-compatible tool schema
+PYTHON_TOOL_SCHEMA = {
+    "type": "function",
+    "function": {
+        "name": "execute_python",
+        "description": "Execute Python code in a secure Jupyter notebook cell and return the result. Use this to perform calculations, data analysis, or run Python scripts.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string",
+                    "description": "The Python code to execute in a single cell"
+                }
+            },
+            "required": ["code"],
+            "additionalProperties": False
+        }
+    }
+}
+
 def execute_python(**kwargs):
-      with Sandbox.create(api_key=api_key) as sandbox:
-          code = kwargs['code']
-          execution = sandbox.run_code(code)
-          result = execution.text
-      return result
+    """
+    Execute Python code in a secure E2B sandbox.
+
+    Args:
+        code (str): Python code to execute
+
+    Returns:
+        str: Execution result text output
+    """
+    with Sandbox.create(api_key=api_key) as sandbox:
+        code = kwargs['code']
+        execution = sandbox.run_code(code)
+        result = execution.text
+    return result
     

@@ -1,4 +1,4 @@
-from scr.pipeline.eval_pipeline import Eval_pipeline
+from scr.pipeline.GAIA_benchmark.eval_pipeline import Eval_pipeline
 from scr.agents.agent_02.single_agent import SingleAgent
 import os
 from dotenv import load_dotenv
@@ -32,7 +32,7 @@ def main():
     print(f"  Test samples: {len(test_data)}")
     print(f"  Validation samples: {len(validation_data)}")
 
-    eval_data = validation_data.select(range(1))
+    eval_data = validation_data.select(range(5))
     print(f"\n→ Evaluating on {len(eval_data)} validation samples")
 
     # 1. Initialize agent

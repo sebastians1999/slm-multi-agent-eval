@@ -35,9 +35,10 @@ class Eval_pipeline:
         self.agent = agent
 
         if log_folder_path is None:
+            # Go up to project root: eval_pipeline.py -> GAIA_benchmark -> pipeline -> scr -> project_root
             self.log_folder_path = os.path.join(
                 os.path.dirname(
-                    os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
                 ),
                 "logs",
             )

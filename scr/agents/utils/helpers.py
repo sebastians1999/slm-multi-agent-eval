@@ -1,3 +1,9 @@
+"""
+Helper utility functions for agents.
+
+Contains general-purpose utility functions used across different agents.
+"""
+
 import re
 from typing import Optional
 
@@ -30,7 +36,6 @@ def extract_final_answer(text: Optional[str]) -> Optional[str]:
         return None
 
     answer = match.group(1).strip()
-
     answer = re.sub(r'^["\']|["\']$', '', answer)
 
     return answer

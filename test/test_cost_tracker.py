@@ -1,6 +1,6 @@
 """Quick test script for cost tracking functionality."""
 
-from ..scr.utilities.cost_tracker import CostTracker
+from scr.utilities.cost_tracker import CostTracker
 
 
 def test_cost_tracker():
