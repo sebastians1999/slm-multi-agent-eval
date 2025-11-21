@@ -1,5 +1,5 @@
 from datasets import Dataset
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Union
 from datetime import datetime
 import os
 from pathlib import Path
@@ -9,6 +9,7 @@ import re
 
 # Import multi-agent
 from scr.agents.agent_01.multiAgent import MultiAgent
+from scr.agents.agent_02.singleAgent import SingleAgent
 
 # Import cost tracker
 from scr.utilities.cost_tracker import CostTracker
@@ -30,6 +31,7 @@ class Eval_pipeline:
         max_iterations: int = 2,
         use_web_search: bool = False,
         log_folder_path: Optional[str] = None,
+        agent: Optional[Union[MultiAgent, SingleAgent]] = None,
     ):
         self.dataset = dataset
         self.model = model
@@ -50,7 +52,7 @@ class Eval_pipeline:
         else:
             self.log_folder_path = log_folder_path
 
-        self.agent = MultiAgent(
+        self.agent = agent or MultiAgent(
             model=model,
             temperature=temperature,
             base_url=base_url,

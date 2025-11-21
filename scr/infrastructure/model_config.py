@@ -49,4 +49,25 @@ MODEL_CONFIGS = {
         "max_model_len": 32768,
         "tool_parser": "mistral",
     },
+    "meta-llama/Llama-3.1-70B-Instruct": {
+        "model_id": "meta-llama/Llama-3.1-70B-Instruct",
+        "gpu": "A100",
+        "max_model_len": 8192,
+        "tool_parser": "llama3_json",
+        "artificial_analysis_name": "Llama 3.1 70B Instruct"
+    },
+    "meta-llama/Llama-3.3-70B-Instruct": {
+        "model_id": "meta-llama/Llama-3.3-70B-Instruct",
+        "gpu": "A100",
+        "max_model_len": 8192,
+        "tool_parser": "llama3_json",
+        "artificial_analysis_name": "Llama 3.3 70B Instruct"
+    },
+    "Qwen/Qwen2.5-72B-Instruct": {
+        "model_id": "Qwen/Qwen2.5-72B-Instruct",
+        "gpu": "A100",
+        "max_model_len": 32768,
+        "tool_parser": "hermes",
+        "artificial_analysis_name": "Qwen2.5 72B Instruct"
+    },
 }

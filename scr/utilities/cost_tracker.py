@@ -127,6 +127,9 @@ class CostTracker:
         price_per_1m_input = pricing.get("price_1m_input_tokens")
         price_per_1m_output = pricing.get("price_1m_output_tokens")
 
+        #print("Price per million input tokens:", price_per_1m_input)
+        #print("Price per million output tokens:", price_per_1m_output)
+
         if price_per_1m_input is None or price_per_1m_output is None:
             logger.warning(f"Incomplete pricing data for model '{model_name}'")
             return None
@@ -136,10 +139,13 @@ class CostTracker:
         output_cost = (output_tokens / 1_000_000) * price_per_1m_output
         total_cost = input_cost + output_cost
 
+
+        #print(f"Input cost: ${input_cost:.6f}, Output cost: ${output_cost:.6f}, Total cost: ${total_cost:.6f}")
+
         return {
-            "input_cost": round(input_cost, 6),
-            "output_cost": round(output_cost, 6),
-            "total_cost": round(total_cost, 6),
+            "input_cost": input_cost,
+            "output_cost": output_cost,
+            "total_cost": total_cost,
             "currency": "USD",
             "input_tokens": input_tokens,
             "output_tokens": output_tokens,
