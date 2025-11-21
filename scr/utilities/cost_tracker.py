@@ -7,6 +7,7 @@ from typing import Dict, Any, Optional, Tuple
 import logging
 import os
 from dotenv import load_dotenv
+from ..infrastructure.model_config import MODEL_CONFIGS
 
 # Load environment variables
 load_dotenv()
@@ -104,6 +105,15 @@ class CostTracker:
                 "model_name": str
             }
         """
+
+        if MODEL_CONFIGS[model_name].get("artificial_analysis_name"):   
+            model_name = MODEL_CONFIGS[model_name]["artificial_analysis_name"]
+        else: 
+            model_name = model_name
+
+        print("Model name used for artificial analysis:", model_name)
+
+
         model_data = self.fetch_model_pricing(model_name)
 
         if not model_data:
@@ -157,6 +167,13 @@ def calculate_inference_cost(
     Returns:
         Dictionary containing cost breakdown or None if pricing not available
     """
+    if MODEL_CONFIGS[model_name].get("artificial_analysis_name"):   
+        model_name = MODEL_CONFIGS[model_name]["artificial_analysis_name"]
+    else: 
+        model_name = model_name
+
+
+    print("Model name used for artificial analysis:", model_name)
     tracker = CostTracker()
     return tracker.calculate_cost(
         model_name=model_name,

@@ -2,12 +2,13 @@ from datasets import load_dataset
 from scr.pipeline.eval_pipeline import Eval_pipeline
 
 def main():
-    dataset = load_dataset("gsm8k", "main")["test"].select(range(100))  # sample 50 items
+    dataset = load_dataset("gsm8k", "main")["test"].select(range(1))  # sample 50 items
 
     pipeline = Eval_pipeline(
         dataset=dataset,
-        model="llama3.1:8b",
-        base_url="http://localhost:11434/v1",
+        model="Qwen/Qwen3-4B-Instruct-2507",
+        #base_url="ht"tp://localhost:11434/v1",
+        base_url= "https://sebastian-schmuelling--slm-server-vllmserver-serve-dev.modal.run/v1",
     )
 
     pipeline.run_eval()

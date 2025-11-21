@@ -1,13 +1,10 @@
 import modal
 import os
-
 from modal.stream_type import StreamType
+from model_config import MODEL_CONFIGS
 
 
-GPU_TYPE = os.environ.get("GPU_TYPE", "T4")
-DEFAULT_MODEL_ID = "microsoft/Phi-3.5-mini-instruct"
 
-MINUTES = 60
 
 
 vllm_image = (
@@ -20,8 +17,11 @@ vllm_image = (
         "fastapi[standard]"
     )
     .env({
-        "HF_HUB_ENABLE_HF_TRANSFER": "1",  # faster model transfers
+        "HF_HUB_ENABLE_HF_TRANSFER": "1",
+        "PYTHONPATH": "/root/app",
+        "HF_HOME": "/models"
     })
+    .add_local_dir("scr/infrastructure", "/root/app")
 )
 
 
@@ -30,16 +30,23 @@ volume = modal.Volume.from_name("model-cache", create_if_missing=True)
 
 
 runtime_config = modal.Secret.from_local_environ(
-    env_keys=["MODEL_ID","GPU_TYPE"],  
+    env_keys=["MODEL_ID"],  
 )
-
 runtime_secrets = modal.Secret.from_name("huggingface-secret")
+
+DEFAULT_MODEL_ID = "mistralai/Mistral-7B-Instruct-v0.3"
+DEFAULT_GPU_TYPE =  "T4"
+
+model_id = os.environ.get("MODEL_ID", DEFAULT_MODEL_ID)
+gpu = MODEL_CONFIGS[model_id].get("gpu")
+
+MINUTES = 60
 
 
 @app.cls(
     image=vllm_image,
-    gpu=GPU_TYPE,  # Read at import time from local env
-    scaledown_window=15 * MINUTES,  # how long should we stay up with no requests?
+    gpu=gpu,  # Read at import time from local env
+    scaledown_window=300,  # Keep container warm for 5 mins
     timeout=10 * MINUTES,  # how long should we wait for container start?
     volumes={"/models": volume},
     secrets=[runtime_config, runtime_secrets],  # Inject runtime config into container
@@ -58,34 +65,50 @@ class VLLMServer:
         from zeus.monitor import ZeusMonitor
         import torch
 
-        
-        MODEL_ID = os.environ.get("MODEL_ID", DEFAULT_MODEL_ID)
+
+        self.model_id = os.environ.get("MODEL_ID", DEFAULT_MODEL_ID)
         
         hf_token = os.environ.get("HF_TOKEN")
         
         if hf_token:
             print("✓ Huggingface token is set.")
 
-        print(f"✓ Initializing with MODEL_ID: {MODEL_ID}")
-        print(f"✓ GPU Type: {GPU_TYPE}")
+        print(f"✓ Initializing with MODEL_ID: {self.model_id}")
+        print(f"✓ GPU Type: {gpu}")
 
-    
+
         self.monitor = ZeusMonitor(gpu_indices=[torch.cuda.current_device()])
 
 
-        engine_args = AsyncEngineArgs(
-            model=MODEL_ID,
-            dtype="float16" if GPU_TYPE == "T4" else "auto",
-            download_dir="/models",
-            enforce_eager=True,
-            max_model_len=8192,
-        )
+        is_mistral = "mistral" in self.model_id.lower()
+
+        max_model_len=MODEL_CONFIGS[self.model_id].get("max_model_len")
+
+        if max_model_len is None:
+            engine_args = AsyncEngineArgs(
+                model=self.model_id,
+                dtype="float16" if gpu == "T4" else "auto",
+                enforce_eager=True,
+                gpu_memory_utilization=0.95,
+                config_format="mistral" if is_mistral else "auto",
+                download_dir="/models",
+            )
+        else:
+            engine_args = AsyncEngineArgs(
+                model=self.model_id,
+                dtype="float16" if gpu == "T4" else "auto",
+                enforce_eager=True,
+                max_model_len=max_model_len,
+                gpu_memory_utilization=0.95,
+                config_format="mistral" if is_mistral else "auto",
+                download_dir="/models",
+            )
 
         self.engine = AsyncLLMEngine.from_engine_args(engine_args)
         model_config = await self.engine.get_model_config()
 
-        
-        base_model = BaseModelPath(name=MODEL_ID, model_path=MODEL_ID)
+
+        base_model = BaseModelPath(name=self.model_id, model_path=self.model_id)
 
        
         serving_models = OpenAIServingModels(
@@ -94,7 +117,7 @@ class VLLMServer:
             base_model_paths=[base_model],
             lora_modules=None,
         )
-
+        
         self.chat_handler = OpenAIServingChat(
             engine_client=self.engine,
             model_config=model_config,
@@ -103,9 +126,11 @@ class VLLMServer:
             request_logger=None,
             chat_template=None,
             chat_template_content_format="auto",
+            enable_auto_tools=True,
+            tool_parser= MODEL_CONFIGS[self.model_id].get("tool_parser"),
         )
 
-        print(f"✓ Server ready: {MODEL_ID} on {GPU_TYPE}")
+        print(f"✓ Server ready: {self.model_id} on {gpu}")
 
     @modal.exit()
     def cleanup(self):
@@ -128,7 +153,7 @@ class VLLMServer:
             return {
                 "data": [
                     {
-                        "id": MODEL_ID,
+                        "id": self.model_id,
                         "object": "model",
                         "owned_by": "vllm",
                     }

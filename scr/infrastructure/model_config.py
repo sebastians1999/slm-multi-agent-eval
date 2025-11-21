@@ -1,35 +1,52 @@
-import modal
-import os
-from typing import Optional
-
-
 MODEL_CONFIGS = {
-    "phi-3.5-mini": {
+    
+    "Qwen/Qwen3-4B-Instruct-2507":{
+        "model_id": "Qwen/Qwen3-4B-Instruct-2507",
+        "gpu": "L4",
+        "max_model_len": 30000,
+        "tool_parser": "hermes",
+        "artificial_analysis_name": "Qwen3 4B 2507 (Reasoning)"
+    },
+    "microsoft/Phi-3.5-mini-instruct": {
         "model_id": "microsoft/Phi-3.5-mini-instruct",
-        "gpu": modal.gpu.T4(),
-        "gpu_memory_utilization": 0.75,
+        "gpu": "T4",
+        "max_model_len": 8000,
+        "tool_parser": "hermes",
     },
-    "llama-3.2-1b": {
+    "meta-llama/Llama-3.1-8B": {
+        "model_id": "meta-llama/Llama-3.1-8B",
+        "gpu": "T4",
+        "max_model_len": 8192,
+        "tool_parser": "hermes"
+    },
+    "microsoft/Phi-4-mini-instruct": {
+        "model_id": "microsoft/Phi-4-mini-instruct",
+        "gpu": "L4",
+        "max_model_len": 8000,
+        "tool_parser": "hermes",
+    },
+    "meta-llama/Llama-3.2-1B-Instruct": {
         "model_id": "meta-llama/Llama-3.2-1B-Instruct",
-        "gpu": modal.gpu.T4(),
-        "gpu_memory_utilization": 0.75,
+        "gpu": "T4",
+        "max_model_len": 8192,
+        "tool_parser": "llama3_json",
     },
-    "llama-3.2-3b": {
+    "meta-llama/Llama-3.2-3B-Instruct": {
         "model_id": "meta-llama/Llama-3.2-3B-Instruct",
-        "gpu": modal.gpu.A100(count=1),
-        "gpu_memory_utilization": 0.85,
+        "gpu": "A100",
+        "max_model_len": 32768,
+        "tool_parser": "llama3_json",
     },
-    # Mistral additions
-    "mistral-7b-instruct-v0.3": {
-        "model_id": "mistralai/Mistral-7B-Instruct-v0.3",  
-        "gpu": modal.gpu.A100(count=1),                 
-        "gpu_memory_utilization": 0.85,
+    "mistralai/Mistral-7B-Instruct-v0.3": {
+        "model_id": "mistralai/Mistral-7B-Instruct-v0.3",
+        "gpu": "L4",
+        "max_model_len": 10000,
+        "tool_parser": "mistral",
     },
-    "mixtral-8x7b-instruct-v0.1": {
-        "model_id": "mistralai/Mixtral-8x7B-Instruct-v0.1",  
-        "gpu": modal.gpu.A100(count=1),                    
-        "gpu_memory_utilization": 0.8,
+    "mistralai/Mixtral-8x7B-Instruct-v0.1": {
+        "model_id": "mistralai/Mixtral-8x7B-Instruct-v0.1",
+        "gpu": "A100",
+        "max_model_len": 32768,
+        "tool_parser": "mistral",
     },
 }
-
-
