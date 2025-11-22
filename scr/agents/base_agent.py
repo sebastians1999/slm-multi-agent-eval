@@ -278,6 +278,7 @@ class BaseAgent(ABC):
             #   }
             # }
             if "choices" not in response_dict or not response_dict["choices"]:
+
                 return {
                     "content": "Error: No choices in response",
                     "messages": current_messages,

@@ -1,13 +1,65 @@
 from datasets import Dataset
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, TypedDict
 from datetime import datetime
 import os
 from pathlib import Path
 import json
 from tqdm import tqdm
+from .scorer import question_scorer
 
 from scr.agents.graph_state import GraphState
 from scr.utilities.cost_tracker import CostTracker
+from scr.infrastructure.model_config import MODEL_CONFIGS
+
+
+class ResultJson(TypedDict):
+    """Structure for the result field."""
+    task_id: str
+    model_answer: Optional[str]
+    reasoning_trace: Optional[str]
+
+
+class AgentMetadata(TypedDict):
+    """Structure for agent metadata."""
+    session_id: str
+    start_time: Optional[str]  
+    end_time: Optional[str]    
+    model_name: str
+    temperature: float
+    iterations: int
+    completion_tokens: int
+    prompt_tokens: int
+    total_tokens: int
+    total_energy_joules: float
+    total_duration_seconds: float
+    average_watts: float
+
+
+class CostData(TypedDict):
+    """Structure for cost data from CostTracker."""
+    input_cost: float
+    output_cost: float
+    total_cost: float
+    price_per_1m_input_tokens: float
+    price_per_1m_output_tokens: float
+
+
+class EvalLog(TypedDict):
+    """Structure for evaluation log entries."""
+    task_id: str
+    file_name: Optional[str]
+    file_path: Optional[str]
+    timestamp: str
+    question: str
+    level: Optional[str]
+    final_answer: Optional[str]
+    annotator_metadata: Optional[Any]
+    result: ResultJson
+    score: bool
+    agent_metadata: AgentMetadata
+    cost_data: Optional[CostData]
+    model_temperature: float
+    model: str
 
 
 class Eval_pipeline:
@@ -53,8 +105,8 @@ class Eval_pipeline:
 
         Collects structured outputs, metadata, and saves logs.
         """
-        logs = []
-        logs_formatted = []
+        logs: List[EvalLog] = []
+        logs_formatted: List[ResultJson] = []
 
         for sample in tqdm(self.dataset, desc="Evaluating"):
             question = sample.get("Question")
@@ -70,19 +122,14 @@ class Eval_pipeline:
 
             structured_output = result.structured_output
 
-            cost_data = None
-            
-            if result.model_name == "Qwen3-4B-Instruct-2507":
-                
-                model = "Qwen3 4B"
-                
-            else: 
-                
-                model = result.model_name
-            
+            cost_data: Optional[CostData] = None
 
-            
-            print(f"Calculating cost for :{result.model_name}")
+            # Map model name to cost tracking name if configured
+            model = result.model_name
+            if MODEL_CONFIGS.get(result.model_name, {}).get("artificial_analysis_name"):
+                model = MODEL_CONFIGS[result.model_name]["artificial_analysis_name"]
+
+            print(f"Calculating cost for: {result.model_name} (mapped to: {model})")
             
             if result.total_prompt_tokens and result.total_completion_tokens:
                 cost_data = self.cost_tracker.calculate_cost(
@@ -91,21 +138,29 @@ class Eval_pipeline:
                     output_tokens=result.total_completion_tokens
                 )
 
-            result_json = {
+            result_json: ResultJson = {
                 "task_id": sample["task_id"],
                 "model_answer": structured_output.model_answer if structured_output else None,
                 "reasoning_trace": structured_output.reasoning_trace if structured_output else None,
             }
 
-            log = {
+            # Calculate score
+            score = question_scorer(
+                model_answer=structured_output.model_answer if structured_output else "",
+                ground_truth=sample.get("Final answer", "")
+            )
+
+            log: EvalLog = {
                 "task_id": sample["task_id"],
                 "file_name": sample.get("file_name"),
                 "file_path": sample.get("file_path"),
                 "timestamp": datetime.now().isoformat(),
                 "question": question,
                 "level": sample.get("Level"),
+                "final_answer": sample.get("Final answer", ""),
                 "annotator_metadata": sample.get("Annotator Metadata"),
                 "result": result_json,
+                "score": score,
                 "agent_metadata": self._serialize_metadata(result),
                 "cost_data": cost_data,
                 "model_temperature": result.temperature,
@@ -136,10 +191,10 @@ class Eval_pipeline:
             print(f"Error running agent on question: {e}")
             return None
 
-    def _serialize_metadata(self, state: GraphState) -> Dict[str, Any]:
-        """Convert GraphState metadata to serializable dict."""
+    def _serialize_metadata(self, state: GraphState) -> AgentMetadata:
+        """Convert GraphState metadata to serializable AgentMetadata dict."""
         if state is None:
-            return None
+            return None  # type: ignore
 
         return {
             "session_id": state.session_id,
@@ -158,15 +213,15 @@ class Eval_pipeline:
 
     def save_logs(
         self,
-        logs_list: List[Dict[str, Any]],
-        logs_list_formatted: List[Dict[str, Any]]
+        logs_list: List[EvalLog],
+        logs_list_formatted: List[ResultJson]
     ) -> None:
         """
         Save evaluation logs to JSON files.
 
         Args:
-            logs_list: Full logs with metadata
-            logs_list_formatted: Formatted results for submission
+            logs_list: Full logs with metadata (typed as EvalLog)
+            logs_list_formatted: Formatted results for submission (typed as ResultJson)
         """
         timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
         folder = Path(self.log_folder_path) / f"eval_{timestamp}"

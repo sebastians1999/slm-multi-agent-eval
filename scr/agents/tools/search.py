@@ -47,7 +47,7 @@ def tavily_search(**kwargs):
     """
     
     kwargs["search_depth"] = "basic"
-    kwargs["include_raw_content"] = "markdown"
+    #kwargs["include_raw_content"] = "markdown"
     
     print("Tavily used!")
     return tavily_client.search(**kwargs)
