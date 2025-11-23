@@ -35,16 +35,15 @@ def main():
     eval_data = validation_data.select(range(1))
     print(f"\n→ Evaluating on {len(eval_data)} validation samples")
 
-    # 1. Initialize agent
     agent = SingleAgent(
         model=model,
         temperature=temperature,
         base_url=base_url,
         api_key=api_key,
-        max_iterations=max_iterations
+        max_iterations=max_iterations,
+        tool_categories=['search', 'code', 'browser']  
     )
 
-    # 2. Initialize eval pipeline with agent
     pipeline = Eval_pipeline(
         dataset=eval_data,
         agent=agent

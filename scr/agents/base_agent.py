@@ -35,7 +35,7 @@ class BaseAgent(ABC):
         temperature: float = 0.3,
         base_url: Optional[str] = None,
         api_key: str = "EMPTY",
-        tool_categories: Optional[List[str]] = None,
+        tool_categories: Optional[List[str]] = ['search', 'code', 'browser'],
         tools: Optional[List[Dict]] = None,
         tool_functions: Optional[Dict[str, Callable]] = None,
         max_iterations: int = 10,
@@ -50,7 +50,8 @@ class BaseAgent(ABC):
             base_url: Optional custom API base URL
             api_key: API key for authentication
             tool_categories: List of tool categories to load (e.g., ['search', 'browser'])
-                           If None and tools not provided, loads ALL available categories
+                           Defaults to all categories ['search', 'code', 'browser'].
+                           If explicitly None, loads NO tools (empty list)
             tools: Optional custom tool schemas (bypasses category system)
             tool_functions: Optional custom tool functions (bypasses category system)
             max_iterations: Maximum tool-calling iterations
@@ -67,6 +68,9 @@ class BaseAgent(ABC):
             >>>
             >>> # Load specific categories
             >>> agent = BaseAgent(model="gpt-4", tool_categories=['search', 'browser'])
+            >>>
+            >>> # Load no tools
+            >>> agent = BaseAgent(model="gpt-4", tool_categories=None)
             >>>
             >>> # Use custom tools (for testing)
             >>> agent = BaseAgent(model="gpt-4", tools=[...], tool_functions={...})
@@ -91,12 +95,16 @@ class BaseAgent(ABC):
             # Dynamic tool loading from registry
             from .tool_loader import get_tools_for_agent, get_browser_manager
 
+            # If explicitly None, load no tools (use empty list)
+            if tool_categories is None:
+                tool_categories = []
+
             self.tool_categories = tool_categories
             self.tools, self.tool_functions = get_tools_for_agent(tool_categories)
 
             # Track browser manager for cleanup if browser tools loaded
             self.browser_manager = None
-            if tool_categories is None or (isinstance(tool_categories, list) and 'browser' in tool_categories):
+            if isinstance(tool_categories, list) and 'browser' in tool_categories:
                 self.browser_manager = get_browser_manager()
 
         self.openai_client = self._create_openai_client()
@@ -168,7 +176,7 @@ class BaseAgent(ABC):
         try:
             tool_func = self.tool_functions[tool_name]
             result = tool_func(**tool_args)
-            print(result)
+            #print(result)
 
             # Track successful call
             self._track_tool_usage(tool_name, success=True)
@@ -214,7 +222,7 @@ class BaseAgent(ABC):
                 call_params["tool_choice"] = "auto"
 
 
-            print(call_params)
+            #print(call_params)
             
             try:
                 response = self.openai_client.chat.completions.create(**call_params)

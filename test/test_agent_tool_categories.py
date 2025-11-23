@@ -229,3 +229,19 @@ def test_empty_tool_categories():
     assert len(agent.tool_functions) == 0
 
     agent.cleanup()
+
+
+def test_none_tool_categories():
+    """Test behavior with None tool categories (explicitly no tools)."""
+    # Explicitly passing None should load no tools
+    agent = TestAgent(
+        model="gpt-4",
+        api_key="test",
+        tool_categories=None
+    )
+
+    assert len(agent.tools) == 0
+    assert len(agent.tool_functions) == 0
+    assert agent.browser_manager is None
+
+    agent.cleanup()

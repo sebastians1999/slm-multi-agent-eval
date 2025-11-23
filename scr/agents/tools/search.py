@@ -50,4 +50,3 @@ def tavily_search(**kwargs):
     #kwargs["include_raw_content"] = "markdown"
     
     print("Tavily used!")
-    return tavily_client.search(**kwargs)

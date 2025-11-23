@@ -1,5 +1,5 @@
 from ..base_agent import BaseAgent
-from ..graph_state import GraphState, StructuredOutput
+from ..base_state import GraphState, StructuredOutput
 from ..utils import extract_final_answer
 from langgraph.graph import StateGraph, END
 from datetime import datetime

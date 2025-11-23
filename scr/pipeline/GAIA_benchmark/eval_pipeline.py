@@ -7,7 +7,7 @@ import json
 from tqdm import tqdm
 from .scorer import question_scorer
 
-from scr.agents.graph_state import GraphState
+from scr.agents.base_state import GraphState
 from scr.utilities.cost_tracker import CostTracker
 from scr.infrastructure.model_config import MODEL_CONFIGS
 
