@@ -41,7 +41,7 @@ MODEL_CONFIGS = {
 ## 4. Running the server
 
 ```bash
-MODEL_ID="mistralai/Mistral-7B-Instruct-v0.3" modal serve scr/infrastructure/modal_llm_server.py
+MODEL_ID="meta-llama/Llama-3.1-8B" modal serve scr/infrastructure/modal_llm_server.py
 # or switch MODEL_ID to any other key present in MODEL_CONFIGS
 ```
 

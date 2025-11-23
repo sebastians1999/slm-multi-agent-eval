@@ -7,7 +7,7 @@ from scr.agents.agent_02.singleAgent import SingleAgent
 
 def main():
     # Load dataset
-    dataset = load_dataset("gsm8k", "main")["test"].select(range(2)) 
+    dataset = load_dataset("gsm8k", "main")["test"].select(range(200)) 
 
     agent_type = "multi" 
 
@@ -17,9 +17,9 @@ def main():
         print("="*80 + "\n")
 
         agent = MultiAgent(
-            model="Qwen/Qwen3-4B-Instruct-2507",
+            model="mistralai/Ministral-8B-Instruct-2410",
             temperature=0.3,
-            base_url="https://sebastian-schmuelling--slm-server-vllmserver-serve-dev.modal.run/v1",
+            base_url="https://francescomoscardelli1--slm-server-vllmserver-serve-dev.modal.run/v1",
             api_key="",
             max_iterations=2,
             use_web_search=False,
@@ -31,9 +31,9 @@ def main():
         print("="*80 + "\n")
 
         agent = SingleAgent(
-            model="Qwen/Qwen3-4B-Instruct-2507", 
+            model="", 
             temperature=0.3,
-            base_url="https://sebastian-schmuelling--slm-server-vllmserver-serve-dev.modal.run/v1",
+            base_url="https://francescomoscardelli1--slm-server-vllmserver-serve-dev.modal.run/v1",
             api_key="",
         )
 

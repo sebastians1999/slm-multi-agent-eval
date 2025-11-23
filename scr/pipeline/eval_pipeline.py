@@ -6,6 +6,7 @@ from pathlib import Path
 import json
 from tqdm import tqdm
 import re
+import time
 
 # Import multi-agent
 from scr.agents.agent_01.multiAgent import MultiAgent
@@ -88,9 +89,11 @@ class Eval_pipeline:
                 continue
 
             total += 1
+            start_time = time.time()
 
             # Call agent
             result = self.call_agent(question=question)
+            runtime_seconds = time.time() - start_time
 
 
             model_answer_text = result.get("solution")
@@ -128,6 +131,7 @@ class Eval_pipeline:
                 "model_answer_text": model_answer_text,
                 "pred_number": pred_num,
                 "is_correct": is_correct,
+                "runtime_seconds": runtime_seconds,
             }
 
             # Full log with metadata
@@ -145,6 +149,7 @@ class Eval_pipeline:
                 "cost_data": cost_data,
                 "model_temperature": self.temperature,
                 "model": self.model,
+                "runtime_seconds": runtime_seconds,
             }
 
             logs.append(log)
@@ -169,24 +174,37 @@ class Eval_pipeline:
 
     # ---------------------------------------------------------------------
 
+
     def _extract_gsm8k_number(self, text: Optional[str]) -> Optional[str]:
         """
-        Extract the final numeric answer for GSM8K.
-        - Prefer the standard '#### <number>' pattern from gold answers.
-        - Otherwise, fall back to the last number in the text.
-        Returns the number as a string to avoid float/int normalization issues.
+        Extract a clean numeric answer for GSM8K.
+        - Prefer the '#### <number>' format.
+        - Otherwise extract the last valid number.
+        - Always return ONLY the digits (and optional minus sign or decimal point).
+        No $, no commas, no parentheses.
         """
         if not text:
             return None
 
-        # Look for the GSM8K convention: '#### <answer>'
-        m = re.search(r"####\s*([-+]?\d+(?:\.\d+)?)", str(text))
-        if m:
-            return m.group(1).strip()
+        text = str(text)
 
-        # Fallback: take the last numeric token in the text (even with $)
-        matches = re.findall(r"\$?[-+]?\d+(?:\.\d+)?", str(text))
-        return matches[-1].strip() if matches else None
+        # 1. First try GSM8K format: '#### <number>'
+        m = re.search(r"####\s*([-+]?\d[\d,]*(?:\.\d+)?)", text)
+        if m:
+            raw = m.group(1)
+            clean = re.sub(r"[^\d\.\-+]", "", raw)  # strip $, commas, parentheses, etc.
+            return clean
+
+        # 2. Otherwise find ALL numeric occurrences
+        #    Allow optional $ and thousand separators, but strip them later.
+        matches = re.findall(r"\$?[-+]?\d[\d,]*(?:\.\d+)?", text)
+        if not matches:
+            return None
+
+        raw = matches[-1]  # last number
+        clean = re.sub(r"[^\d\.\-+]", "", raw)  # remove $, commas, any non-numeric symbols
+
+        return clean if clean else None
 
     def _serialize_metadata(self, metadata) -> Dict[str, Any]:
         """Convert AgentMetaData to serializable dict."""

@@ -1,0 +1,11 @@
+[
+  {
+    "id": 0,
+    "question": "Janet\u2019s ducks lay 16 eggs per day. She eats three for breakfast every morning and bakes muffins for her friends every day with four. She sells the remainder at the farmers' market daily for $2 per fresh duck egg. How much in dollars does she make every day at the farmers' market?",
+    "gold_answer": "Janet sells 16 - 3 - 4 = <<16-3-4=9>>9 duck eggs a day.\nShe makes 9 * 2 = $<<9*2=18>>18 every day at the farmer\u2019s market.\n#### 18",
+    "gold_number": "18",
+    "model_answer_text": " To find out how much Janet makes every day at the farmers' market, follow these steps:\n\n1. Calculate the total number of eggs Janet has each day. Since each duck lays 16 eggs daily, if Janet has D ducks, she will have 16D eggs.\n\n2. Subtract the eggs Janet consumes for breakfast and those used for baking muffins from the total number of eggs. If she eats 3 for breakfast and bakes muffins with 4, she uses 7 eggs daily.\n\n3. Multiply the remaining eggs by $2 to find the value of the eggs sold at the farmers' market. If there are (16D - 7) eggs remaining, she will make (16D - 7) * $2.\n\n4. Validate the number of eggs sold against the total number of eggs available, ensuring no eggs are sold more than once. Since the question does not specify any constraints on the number of ducks, we assume that the number of eggs available is always greater than or equal to the number of eggs sold.\n\n5. Sum up the value of the eggs sold to find the total daily income from the farmers' market. If (16D - 7) eggs are sold, Janet makes (16D - 7) * $2.\n\n6. Structure the final answer as follows: \"Janet makes $<number> per day at the farmers' market.\"\n\n#### <(16D - 7) * 2>\nThis is the final answer, where D is the number of ducks Janet has. The final numeric answer depends on the number of ducks Janet has, which is not provided in the question.",
+    "pred_number": "2",
+    "is_correct": false
+  }
+]

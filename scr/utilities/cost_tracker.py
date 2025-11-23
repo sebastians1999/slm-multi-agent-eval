@@ -26,7 +26,7 @@ class CostTracker:
 
         API key is loaded from ARTIFICIAL_ANALYSIS_API_KEY environment variable.
         """
-        self.api_key = os.getenv("ARTIFICIAL_ANALYSIS_API_KEY")
+        self.api_key = "aa_bsrBWnCvPYZrxxZighORlgtXExIsmhci"
         if not self.api_key:
             logger.warning("No Artificial Analysis API key found in environment. Cost tracking will be disabled.")
         self.base_url = "https://artificialanalysis.ai/api/v2/data/llms/models"

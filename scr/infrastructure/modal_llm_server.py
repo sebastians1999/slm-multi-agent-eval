@@ -1,10 +1,7 @@
 import modal
 import os
 from modal.stream_type import StreamType
-from model_config import MODEL_CONFIGS
-
-
-
+from model_config import MODEL_CONFIGS 
 
 
 vllm_image = (

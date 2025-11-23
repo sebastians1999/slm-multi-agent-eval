@@ -70,4 +70,19 @@ MODEL_CONFIGS = {
         "tool_parser": "hermes",
         "artificial_analysis_name": "Qwen2.5 72B Instruct"
     },
+    "Qwen/Qwen2.5-7B-Instruct": {
+        "model_id": "Qwen/Qwen2.5-7B-Instruct",
+        "gpu": "L4",
+        "max_model_len": 32768,
+        "tool_parser": "hermes",
+        "artificial_analysis_name": "Qwen2.5 7B Instruct"
+    },
+    "mistralai/Ministral-8B-Instruct-2410": {
+        "model_id": "mistralai/Ministral-8B-Instruct-2410",
+        "gpu": "L4",               
+        "max_model_len": 32768,    
+        "tool_parser": "mistral",
+        "artificial_analysis_name": "Ministral 8B",
+    },
+
 }
