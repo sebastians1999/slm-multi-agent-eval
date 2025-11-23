@@ -9,7 +9,7 @@ def main():
     # Load dataset
     dataset = load_dataset("gsm8k", "main")["test"].select(range(200)) 
 
-    agent_type = "multi" 
+    agent_type = "single" 
 
     if agent_type == "multi":
         print("\n" + "="*80)
@@ -31,7 +31,7 @@ def main():
         print("="*80 + "\n")
 
         agent = SingleAgent(
-            model="", 
+            model="Qwen/Qwen3-32B-AWQ", 
             temperature=0.3,
             base_url="https://francescomoscardelli1--slm-server-vllmserver-serve-dev.modal.run/v1",
             api_key="",

@@ -84,5 +84,11 @@ MODEL_CONFIGS = {
         "tool_parser": "mistral",
         "artificial_analysis_name": "Ministral 8B",
     },
-
+    "Qwen/Qwen3-32B-AWQ": {
+        "model_id": "Qwen/Qwen3-32B-AWQ",
+        "gpu": "A100",
+        "max_model_len": 8192,
+        "tool_parser": "hermes",
+        "artificial_analysis_name": "Qwen3 32B (Reasoning)"
+    },
 }
