@@ -1,5 +1,5 @@
 from scr.pipeline.GAIA_benchmark.eval_pipeline import Eval_pipeline
-from scr.agents.single_Agent.single_agent import SingleAgent
+from scr.agents.single_agent.single_agent import SingleAgent
 import os
 from dotenv import load_dotenv
 from datasets import load_dataset

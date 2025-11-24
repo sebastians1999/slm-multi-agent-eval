@@ -46,7 +46,8 @@ def tavily_search(**kwargs):
         Search results from Tavily API
     """
     
-    kwargs["search_depth"] = "basic"
+    kwargs["search_depth"] = "advanced"
     #kwargs["include_raw_content"] = "markdown"
     
-    print("Tavily used!")
+    print("Tavily used.")
+    return tavily_client.search(**kwargs)

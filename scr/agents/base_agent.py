@@ -316,6 +316,14 @@ class BaseAgent(ABC):
 
                 tool_result = self._execute_tool_call(function_name, function_args)
 
+
+                #debugging
+                print("#"*100)
+                print("DEBUG: Tool call result:")
+                print(tool_result)
+                print("#"*100)
+
+
                 current_messages.append({
                     "role": "tool",
                     "tool_call_id": tool_call["id"],

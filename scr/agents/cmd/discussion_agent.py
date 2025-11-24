@@ -1,12 +1,13 @@
 from typing import Optional, List
 import re
 from datetime import datetime
-
+import os
 from scr.agents.base_agent import BaseAgent
-from scr.agents.graph_state import GraphState
+from scr.agents.base_state import GraphState
 from .agent_config import AgentConfig
 from .cmd_state import AgentResponse
-
+import yaml
+from ..utils.helpers import inject_prompt_fields
 
 class DiscussionAgent(BaseAgent):
     """Discussion agent that extends BaseAgent for CMD"""
@@ -17,7 +18,9 @@ class DiscussionAgent(BaseAgent):
             model=config.model_name,
             tool_categories=config.tool_categories,
             temperature=config.temperature,
-            max_iterations=config.max_iterations
+            max_iterations=config.max_iterations,
+            base_url=config.base_url,
+            api_key=config.api_key
         )
 
         # CMD-specific attributes
@@ -46,8 +49,22 @@ class DiscussionAgent(BaseAgent):
             {"role": "user", "content": prompt}
         ]
 
+        print("#"*100)
+        print("DEBUG: messages sent to DiscussionAgent.generate_response:")
+        print(messages)
+        print("#"*100)
+
         # Call parent invoke (with tool control)
         result = self.invoke(messages, tools=use_tools)
+
+
+        # for debugging
+
+        print("#"*100)
+        print("DEBUG: DiscussionAgent.generate_response result:")
+        print(result)
+        print("#"*100)
+
 
         # Parse structured output
         parsed = self._parse_response(result["content"])
@@ -115,8 +132,7 @@ class DiscussionAgent(BaseAgent):
     def generate_vote(
         self,
         question: str,
-        previous_answer: AgentResponse,
-        others_final_opinions: List[AgentResponse]
+        previous_response: AgentResponse,
     ) -> str:
         """
         Generate final vote with FINAL ANSWER format.
@@ -129,14 +145,13 @@ class DiscussionAgent(BaseAgent):
         Returns:
             Full response content with FINAL ANSWER
         """
-        prompt = self._build_voting_prompt(question, previous_answer, others_final_opinions)
+        prompt = self._build_voting_prompt(question, previous_response)
 
         messages = [
             {"role": "system", "content": self.system_prompt},
             {"role": "user", "content": prompt}
         ]
 
-        # No tools for voting
         result = self.invoke(messages, tools=False)
 
         return result["content"]
@@ -145,7 +160,6 @@ class DiscussionAgent(BaseAgent):
         self,
         question: str,
         previous_answer: AgentResponse,
-        others_final_opinions: List[AgentResponse]
     ) -> str:
         """
         Build voting prompt where agent must provide FINAL ANSWER.
@@ -155,30 +169,30 @@ class DiscussionAgent(BaseAgent):
         - Requires FINAL ANSWER format
         - Reviews all final viewpoints from discussion
         """
-        parts = [
-            f"# Question\n{question}\n",
-            f"\n# Your Final Viewpoint from Discussion",
-            f"Viewpoint: {previous_answer.viewpoint}",
-            f"Explanation: {previous_answer.explanation}\n",
-            f"\n# Other Agents' Final Viewpoints"
-        ]
 
-        for opinion in others_final_opinions:
-            parts.append(f"\n## Agent {opinion.agent_id}:")
-            parts.append(f"Viewpoint: {opinion.viewpoint}")
 
-        parts.append("\n\n# Your Task")
-        parts.append(
-            "Based on the discussion above, provide your FINAL ANSWER to the question. "
-            "Consider all viewpoints including your own. "
-            "You MUST respond in this format:\n\n"
-            "FINAL ANSWER: [your answer]\n\n"
-            "YOUR FINAL ANSWER should be a number OR as few words as possible OR a comma separated list of numbers and/or strings. "
-            "If you are asked for a number, don't use comma to write your number neither use units such as $ or percent sign unless specified otherwise. "
-            "If you are asked for a string, don't use articles, neither abbreviations (e.g. for cities), and write the digits in plain text unless specified otherwise."
+        prompt_path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            "prompts",
+            "prompts.yaml"
         )
+        with open(prompt_path, "r") as f:
+            prompts = yaml.safe_load(f)
+        voting_prompt = prompts["voting_prompt"]
 
-        return "\n".join(parts)
+
+        if not previous_answer.viewpoint:
+            print("f  Warning: Previous answer has no viewpoint, using whole answer as context.")
+            context = previous_answer
+        else:
+            context = previous_answer.viewpoint
+
+        injected_prompt = inject_prompt_fields(
+            voting_prompt,
+            question=question,
+            viewpoint=context               
+        )
+        return injected_prompt
 
     def _parse_response(self, content: str) -> dict:
         """Parse response into viewpoint and explanation"""

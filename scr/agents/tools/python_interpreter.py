@@ -38,9 +38,23 @@ def execute_python(**kwargs):
     Returns:
         str: Execution result text output
     """
+    
     with Sandbox.create(api_key=api_key) as sandbox:
         code = kwargs['code']
         execution = sandbox.run_code(code)
-        result = execution.text
+
+        if execution.error:
+            return f"Error: {execution.error.name}: {execution.error.value}\n{execution.error.traceback}"
+            
+        output_logs = "\n".join(execution.logs.stdout)
+        
+
+        result = output_logs
+        if execution.text:
+            result += f"\nResult: {execution.text}"
+            
+        print("Python tool used.")
+        
     return result
+
     

@@ -31,7 +31,9 @@ def main():
             system_prompt="Focus on finding factual information using search and web browsing. Always verify facts before presenting them.",
             tool_categories=["search", "browser"],
             temperature=temperature,
-            max_iterations=max_iterations
+            max_iterations=max_iterations,
+            base_url=base_url,
+            api_key=api_key
         ),
         AgentConfig(
             agent_id="coder",
@@ -39,7 +41,9 @@ def main():
             system_prompt="Solve problems with code execution. Break down complex problems systematically and use computation when needed.",
             tool_categories=["code"],
             temperature=temperature,
-            max_iterations=max_iterations
+            max_iterations=max_iterations,
+            base_url=base_url,
+            api_key=api_key
         ),
         AgentConfig(
             agent_id="generalist",
@@ -47,7 +51,9 @@ def main():
             system_prompt="Think broadly and consider all available tools. Provide balanced perspectives and use the right tool for each task.",
             tool_categories=["search", "code", "browser"],
             temperature=temperature,
-            max_iterations=max_iterations
+            max_iterations=max_iterations,
+            base_url=base_url,
+            api_key=api_key
         ),
     ]
 
@@ -73,17 +79,15 @@ def main():
     agent_group = AgentGroup(custom_configs)
     print(f"  Agent IDs: {agent_group.agent_ids}")
 
-    # 2. Create CMD orchestrator
     orchestrator = CMDOrchestrator(
         agent_group=agent_group,
-        max_rounds=2,  # 2 rounds of discussion
+        max_rounds=1,  # 2 rounds of discussion
         enable_secretary=True  # Use secretary for tie-breaking
     )
 
-    # 3. Initialize eval pipeline with CMD orchestrator
     pipeline = Eval_pipeline(
         dataset=eval_data,
-        agent=orchestrator  # CMDOrchestrator has run() method compatible with eval_pipeline
+        agent=orchestrator  #
     )
 
     # 4. Run evaluation

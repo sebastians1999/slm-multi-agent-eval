@@ -10,6 +10,8 @@ from .cmd_state import DiscussionState, AgentResponse
 from .discussion_agent import DiscussionAgent
 from scr.agents.base_state import StructuredOutput
 from scr.agents.utils import extract_final_answer
+import dotenv
+from dotenv import load_dotenv
 
 
 class CMDOrchestrator:
@@ -50,16 +52,15 @@ class CMDOrchestrator:
         state = DiscussionState(
             # GraphState required fields
             session_id=str(uuid.uuid4()),
-            problem=question,  # Maps to the discussion question
+            problem=question,
             structured_output=StructuredOutput(
                 model_answer=None,
                 reasoning_trace=None
             ),
             start_time=datetime.now(),
-            end_time=datetime.now(),  # Will be updated at the end
-            model_name=self.agent_group[0].config.model_name if len(self.agent_group) > 0 else "unknown",
-            temperature=self.agent_group[0].config.temperature if len(self.agent_group) > 0 else 0.7,
-            # CMD-specific fields
+            end_time=datetime.now(),
+            model_name=self.agent_group[0].config.model_name,  # Use first agent's model for logging
+            temperature=self.agent_group[0].config.temperature,  # Use first agent's temperature
             num_agents=len(self.agent_group),
             max_rounds=self.max_rounds,
             active_agents=self.agent_group.agent_ids
@@ -90,10 +91,11 @@ class CMDOrchestrator:
         # Accumulate all agents' metadata (done once at the end to avoid double-counting)
         for agent in self.agent_group.agents:
             state.accumulate_agent_metadata(agent.meta_data)
-            # Count total invocations across all agents
-            state.iterations += agent.meta_data.tool_call_count + len([
-                r for r in state.discussion_history if r.agent_id == agent.agent_id
-            ])
+
+        # Count total LLM invocations: discussion rounds + voting + secretary (if applicable)
+        state.iterations = len(state.discussion_history) + len(state.votes)
+        if state.is_tie and self.enable_secretary:
+            state.iterations += 1  # Secretary invocation
 
         # Populate structured_output for eval_pipeline compatibility
         state.structured_output = StructuredOutput(
@@ -138,7 +140,7 @@ class CMDOrchestrator:
         for agent in self.agent_group.agents:
             print(f"  Agent {agent.agent_id}: Generating initial response...")
             response = agent.generate_response(
-                question=state.problem,  # Use 'problem' from GraphState
+                question=state.problem,  
                 previous_answer=None,
                 others_opinions=[],
                 round_number=0
@@ -205,22 +207,18 @@ class CMDOrchestrator:
                 print(f"  Warning: No final response found for {agent.agent_id}")
                 continue
 
-            # Get all OTHER agents' final viewpoints
-            others_final = [
-                self._get_latest_response(state, other_agent.agent_id)
-                for other_agent in self.agent_group.agents
-                if other_agent.agent_id != agent.agent_id
-            ]
-            others_final = [r for r in others_final if r is not None]
 
             print(f"  Agent {agent.agent_id}: Casting vote...")
 
-            # Generate vote with FINAL ANSWER format
             vote_content = agent.generate_vote(
                 question=state.problem,
-                previous_answer=final_response,
-                others_final_opinions=others_final
+                previous_response=final_response,
             )
+
+            # Debug: print full vote content
+            print(f"\n    DEBUG - Full vote content from {agent.agent_id}:")
+            print(f"    {vote_content[:500]}")  # First 500 chars
+            print()
 
             # Extract FINAL ANSWER
             extracted_vote = extract_final_answer(vote_content)
@@ -287,13 +285,19 @@ class CMDOrchestrator:
             prompts = yaml.safe_load(f)
         secretary_prompt = prompts["secretary_prompt"]
 
+        load_dotenv()
+        base_url = os.getenv("MODAL_BASE_URL")
+
         # Create secretary agent
         secretary_config = self.secretary_config or AgentConfig(
             agent_id="secretary",
             model_name="Qwen/Qwen3-4B-Instruct-2507",
             system_prompt=secretary_prompt,
             tool_categories=[],  # No tools for secretary
-            temperature=0.5
+            temperature=0.5,
+            base_url=base_url,
+            api_key="EMPTY"
+
         )
 
         secretary = DiscussionAgent(secretary_config)
@@ -338,7 +342,7 @@ class CMDOrchestrator:
             r for r in state.discussion_history
             if r.agent_id == agent_id
         ]
-        return agent_responses[-1] if agent_responses else None
+        return agent_responses[-1] if agent_responses[-1] else None
 
     def _get_others_responses(
         self,
@@ -370,7 +374,6 @@ class CMDOrchestrator:
             f"\nFinal Decision: {state.final_decision}",
             f"\nVote Distribution:"
         ]
-
         # Add vote counts
         vote_counts = Counter(state.votes.values())
         for viewpoint, count in vote_counts.items():

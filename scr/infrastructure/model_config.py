@@ -3,7 +3,7 @@ MODEL_CONFIGS = {
     "Qwen/Qwen3-4B-Instruct-2507":{
         "model_id": "microsoft/Phi-3.5-mini-instruct",
         "gpu": "T4",
-        "max_model_len": 10000,
+        "max_model_len": 30000,
         "tool_parser": "hermes",
         "artificial_analysis_name": "Qwen3 4B 2507 (Reasoning)",
     },

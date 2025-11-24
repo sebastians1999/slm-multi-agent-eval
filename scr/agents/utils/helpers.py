@@ -39,3 +39,14 @@ def extract_final_answer(text: Optional[str]) -> Optional[str]:
     answer = re.sub(r'^["\']|["\']$', '', answer)
 
     return answer
+
+def inject_prompt_fields(prompt_template: str, **fields) -> str:
+
+    for key, value in fields.items():
+        if not isinstance(value, str):
+            raise ValueError(f"Field '{key}' must be a string, got {type(value).__name__}")
+    
+    try:
+        return prompt_template.format(**fields)
+    except KeyError as e:
+        raise KeyError(f"Missing required field: {e}")
