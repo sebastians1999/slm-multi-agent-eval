@@ -49,4 +49,11 @@ MODEL_CONFIGS = {
         "max_model_len": 32768,
         "tool_parser": "mistral",
     },
+    "Qwen/Qwen3-32B-AWQ": {
+        "model_id": "Qwen/Qwen3-32B-AWQ",
+        "gpu": "A100",
+        "max_model_len": 30000,
+        "tool_parser": "hermes",
+        "artificial_analysis_name": "Qwen3 32B (Reasoning)"
+    },
 }

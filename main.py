@@ -13,8 +13,9 @@ def main():
 
 
     # Agent settings
-    model = "Qwen/Qwen3-4B-Instruct-2507"
-    temperature = 0.3
+    #model = "Qwen/Qwen3-4B-Instruct-2507"
+    model = "Qwen/Qwen3-32B-AWQ"
+    temperature = 0.2
     max_iterations = 5
 
 
@@ -29,10 +30,14 @@ def main():
     test_data = dataset["test"]
     validation_data = dataset["validation"]
 
+    filtered_validation_data = validation_data.filter(lambda example: example["file_name"]== "")
+
+
     print(f"  Test samples: {len(test_data)}")
     print(f"  Validation samples: {len(validation_data)}")
-
-    eval_data = validation_data.select(range(1))
+    print(f"(Filtered to only include samples with empty file_name (no documents)):{len(filtered_validation_data)} samples")
+    #eval_data = filtered_validation_data.select(range(1))
+    eval_data = filtered_validation_data
     print(f"\n→ Evaluating on {len(eval_data)} validation samples")
 
     agent = SingleAgent(

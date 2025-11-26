@@ -47,6 +47,7 @@ def tavily_search(**kwargs):
     """
     
     kwargs["search_depth"] = "advanced"
+    kwargs["include_images"] = False
     #kwargs["include_raw_content"] = "markdown"
     
     print("Tavily used.")

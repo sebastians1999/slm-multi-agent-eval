@@ -1,0 +1,7 @@
+{
+    "single_agent": {
+        "model": "Qwen/Qwen3-32B-AWQ",
+        "max_model_len": 30000,
+        "log_folder": "eval_2025-11-24_21-33-29"
+    }
+}
