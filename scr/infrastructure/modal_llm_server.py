@@ -104,10 +104,9 @@ class VLLMServer:
         self.engine = AsyncLLMEngine.from_engine_args(engine_args)
         model_config = await self.engine.get_model_config()
 
-
         base_model = BaseModelPath(name=self.model_id, model_path=self.model_id)
 
-       
+        chat_template = MODEL_CONFIGS[self.model_id].get("chat_template")
         serving_models = OpenAIServingModels(
             model_config=model_config,
             engine_client=self.engine,
@@ -121,7 +120,7 @@ class VLLMServer:
             models=serving_models,
             response_role="assistant",
             request_logger=None,
-            chat_template=None,
+            chat_template=chat_template,
             chat_template_content_format="auto",
             enable_auto_tools=True,
             tool_parser= MODEL_CONFIGS[self.model_id].get("tool_parser"),

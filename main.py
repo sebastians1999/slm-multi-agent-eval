@@ -7,9 +7,9 @@ from scr.agents.agent_02.singleAgent import SingleAgent
 
 def main():
     # Load dataset
-    dataset = load_dataset("gsm8k", "main")["test"].select(range(200)) 
+    dataset = load_dataset("gsm8k", "main")["test"].select(range(200))  # Use a subset for quicker evaluation
 
-    agent_type = "single" 
+    agent_type = "multi" 
 
     if agent_type == "multi":
         print("\n" + "="*80)
@@ -17,7 +17,7 @@ def main():
         print("="*80 + "\n")
 
         agent = MultiAgent(
-            model="mistralai/Ministral-8B-Instruct-2410",
+            model="Qwen/Qwen3-8B",
             temperature=0.3,
             base_url="https://francescomoscardelli1--slm-server-vllmserver-serve-dev.modal.run/v1",
             api_key="",

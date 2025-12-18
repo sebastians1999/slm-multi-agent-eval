@@ -7,6 +7,20 @@ MODEL_CONFIGS = {
         "tool_parser": "hermes",
         "artificial_analysis_name": "Qwen3 4B 2507 (Reasoning)"
     },
+    "Qwen/Qwen3-8B": {
+        "model_id": "Qwen/Qwen3-8B",
+        "gpu": "A100",             # Recommend A100 for long context; can drop to L4 if you cap context
+        "max_model_len": 32768,    # Safe cap for L4/A10; set 128000 if serving on A100 with enough memory
+        "tool_parser": "hermes",
+        "artificial_analysis_name": "Qwen3 8B (Reasoning)"      
+    },
+    "gemini-1.5-flash-8b": {
+        "model_id": "gemini-1.5-flash-8b",
+        "gpu": None,                # Hosted model; not run via vLLM/Modal
+        "max_model_len": None,      # Use provider default
+        "tool_parser": None,
+        "artificial_analysis_name": "Gemini 1.5 Flash 8B"
+    },
     "microsoft/Phi-3.5-mini-instruct": {
         "model_id": "microsoft/Phi-3.5-mini-instruct",
         "gpu": "T4",
@@ -15,9 +29,14 @@ MODEL_CONFIGS = {
     },
     "meta-llama/Llama-3.1-8B": {
         "model_id": "meta-llama/Llama-3.1-8B",
-        "gpu": "T4",
-        "max_model_len": 8192,
-        "tool_parser": "hermes"
+        "gpu": "A100",               # Better headroom than T4; use A100 if available
+        "max_model_len": 8192,     # Raise cap to avoid prompt overflow while staying safe on L4
+        "tool_parser": "llama3_json",
+        "chat_template": """{{ bos_token }}{% for message in messages %}<|start_header_id|>{{ message['role'] }}<|end_header_id|>
+{% if message['content'] is string %}{{ message['content'] }}{% else %}{% for item in message['content'] %}{% if item['type'] == 'text' %}{{ item['text'] }}{% endif %}{% endfor %}{% endif %}<|eot_id|>
+{% endfor %}<|start_header_id|>assistant<|end_header_id|>
+""",
+        "artificial_analysis_name": "Llama 3.1 8B"
     },
     "microsoft/Phi-4-mini-instruct": {
         "model_id": "microsoft/Phi-4-mini-instruct",
