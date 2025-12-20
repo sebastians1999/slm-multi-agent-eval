@@ -17,7 +17,7 @@ def main():
         print("="*80 + "\n")
 
         agent = MultiAgent(
-            model="Qwen/Qwen3-8B",
+            model="microsoft/Phi-3-mini-4k-instruct",
             temperature=0.3,
             base_url="https://francescomoscardelli1--slm-server-vllmserver-serve-dev.modal.run/v1",
             api_key="",

@@ -21,11 +21,25 @@ MODEL_CONFIGS = {
         "tool_parser": None,
         "artificial_analysis_name": "Gemini 1.5 Flash 8B"
     },
+    "google/gemma-3-4b-it": {
+        "model_id": "google/gemma-3-4b-it",
+        "gpu": "L4",
+        "max_model_len": 8192,
+        "tool_parser": None,
+        "artificial_analysis_name": "Gemma 3 4B Instruct",
+    },
     "microsoft/Phi-3.5-mini-instruct": {
         "model_id": "microsoft/Phi-3.5-mini-instruct",
         "gpu": "T4",
         "max_model_len": 8000,
         "tool_parser": "hermes",
+    },
+    "microsoft/Phi-3-mini-4k-instruct": {
+        "model_id": "microsoft/Phi-3-mini-4k-instruct",
+        "gpu": "T4",
+        "max_model_len": 4096,
+        "tool_parser": "hermes",
+        "artificial_analysis_name": "Phi-3 Mini Instruct 3.8B",
     },
     "meta-llama/Llama-3.1-8B": {
         "model_id": "meta-llama/Llama-3.1-8B",
