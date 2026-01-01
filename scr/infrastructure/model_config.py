@@ -124,4 +124,11 @@ MODEL_CONFIGS = {
         "tool_parser": "hermes",
         "artificial_analysis_name": "Qwen3 32B (Reasoning)"
     },
+    "Qwen/Qwen3-30B-A3B-Instruct-2507-FP8": {
+        "model_id": "Qwen/Qwen3-30B-A3B-Instruct-2507-FP8",
+        "gpu": "A100",
+        "max_model_len": 8192,
+        "tool_parser": "hermes",
+        "artificial_analysis_name": "Qwen3 30B A3B (Non-reasoning)"
+    },
 }
