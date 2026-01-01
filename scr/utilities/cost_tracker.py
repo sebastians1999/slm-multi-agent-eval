@@ -7,6 +7,7 @@ from typing import Dict, Any, Optional, Tuple
 import logging
 import os
 from dotenv import load_dotenv
+from ..infrastructure.model_config import MODEL_CONFIGS
 
 # Load environment variables
 load_dotenv()
@@ -25,7 +26,7 @@ class CostTracker:
 
         API key is loaded from ARTIFICIAL_ANALYSIS_API_KEY environment variable.
         """
-        self.api_key = os.getenv("ARTIFICIAL_ANALYSIS_API_KEY")
+        self.api_key = "aa_bsrBWnCvPYZrxxZighORlgtXExIsmhci"
         if not self.api_key:
             logger.warning("No Artificial Analysis API key found in environment. Cost tracking will be disabled.")
         self.base_url = "https://artificialanalysis.ai/api/v2/data/llms/models"
@@ -104,6 +105,15 @@ class CostTracker:
                 "model_name": str
             }
         """
+
+        if MODEL_CONFIGS[model_name].get("artificial_analysis_name"):   
+            model_name = MODEL_CONFIGS[model_name]["artificial_analysis_name"]
+        else: 
+            model_name = model_name
+
+        print("Model name used for artificial analysis:", model_name)
+
+
         model_data = self.fetch_model_pricing(model_name)
 
         if not model_data:
@@ -117,6 +127,9 @@ class CostTracker:
         price_per_1m_input = pricing.get("price_1m_input_tokens")
         price_per_1m_output = pricing.get("price_1m_output_tokens")
 
+        #print("Price per million input tokens:", price_per_1m_input)
+        #print("Price per million output tokens:", price_per_1m_output)
+
         if price_per_1m_input is None or price_per_1m_output is None:
             logger.warning(f"Incomplete pricing data for model '{model_name}'")
             return None
@@ -126,10 +139,13 @@ class CostTracker:
         output_cost = (output_tokens / 1_000_000) * price_per_1m_output
         total_cost = input_cost + output_cost
 
+
+        #print(f"Input cost: ${input_cost:.6f}, Output cost: ${output_cost:.6f}, Total cost: ${total_cost:.6f}")
+
         return {
-            "input_cost": round(input_cost, 6),
-            "output_cost": round(output_cost, 6),
-            "total_cost": round(total_cost, 6),
+            "input_cost": input_cost,
+            "output_cost": output_cost,
+            "total_cost": total_cost,
             "currency": "USD",
             "input_tokens": input_tokens,
             "output_tokens": output_tokens,
@@ -157,6 +173,13 @@ def calculate_inference_cost(
     Returns:
         Dictionary containing cost breakdown or None if pricing not available
     """
+    if MODEL_CONFIGS[model_name].get("artificial_analysis_name"):   
+        model_name = MODEL_CONFIGS[model_name]["artificial_analysis_name"]
+    else: 
+        model_name = model_name
+
+
+    print("Model name used for artificial analysis:", model_name)
     tracker = CostTracker()
     return tracker.calculate_cost(
         model_name=model_name,

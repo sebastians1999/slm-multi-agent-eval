@@ -1,56 +1,57 @@
-from scr.pipeline.eval_pipeline import Eval_pipeline
-import os
-from dotenv import load_dotenv
 from datasets import load_dataset
+from scr.pipeline.eval_pipeline import Eval_pipeline
 
+# Import agents for comparison
+from scr.agents.agent_01.multiAgent import MultiAgent
+from scr.agents.agent_02.singleAgent import SingleAgent
 
 def main():
+    # Load dataset
+    dataset = load_dataset("gsm8k", "main")["test"].select(range(200))  # Use a subset for quicker evaluation
 
-    load_dotenv()
-    base_url = os.getenv("MODAL_BASE_URL")
-    api_key = "EMPTY"
-    
-    
+    agent_type = "single" 
 
-    # Read the token
-    hf_token = os.getenv("HF_TOKEN")
+    if agent_type == "multi":
+        print("\n" + "="*80)
+        print("Running MULTI-AGENT evaluation (SLM with specialized agents)")
+        print("="*80 + "\n")
 
-    # Login securely
-    login(token=hf_token)
+        agent = MultiAgent(
+            model="microsoft/Phi-3-mini-4k-instruct",
+            temperature=0.3,
+            base_url="https://francescomoscardelli1--slm-server-vllmserver-serve-dev.modal.run/v1",
+            api_key="",
+            max_iterations=2,
+            use_web_search=False,
+        )
 
-    dataset = load_dataset(
-        "gaia-benchmark/GAIA",
-        "2023_all",
-        trust_remote_code=True
-    )
+    elif agent_type == "single":
+        print("\n" + "="*80)
+        print("Running SINGLE-AGENT evaluation (Large LLM)")
+        print("="*80 + "\n")
 
-    
-    
-    test_data = dataset["test"]
-    validation_data = dataset["validation"]
+        agent = SingleAgent(
+            model="Qwen/Qwen3-30B-A3B-Instruct-2507-FP8", 
+            temperature=0.3,
+            base_url="https://francescomoscardelli1--slm-server-vllmserver-serve-dev.modal.run/v1",
+            api_key="",
+        )
 
-    print(f"  Test samples: {len(test_data)}")
-    print(f"  Validation samples: {len(validation_data)}")
-
-    eval_data = validation_data.select(range(1))
-    print(f"\n→ Evaluating on {len(eval_data)} validation samples")
+    else:
+        raise ValueError(f"Invalid agent_type: {agent_type}. Use 'multi' or 'single'.")
 
     pipeline = Eval_pipeline(
-        dataset=eval_data,
-        model=model,
-        temperature=temperature,
-        base_url=base_url,
-        api_key=api_key,
-        max_iterations=max_iterations,
-        use_web_search=use_web_search,
+        dataset=dataset,
+        model=agent.model,  
+        temperature=agent.temperature,
+        base_url=agent.base_url,
+        api_key=agent.api_key,
+        max_iterations=getattr(agent, 'max_iterations', 1),
+        use_web_search=getattr(agent, 'use_web_search', False),
+        agent=agent,
     )
 
-    print("\nStarting evaluation")
     pipeline.run_eval()
-
-    print("Evaluation completed!")
-
-
 
 if __name__ == "__main__":
     main()
